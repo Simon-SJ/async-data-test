@@ -66,7 +66,7 @@ async def on_ready():
 @client.event
 async def on_message(message):
     # Ignore messages from the bot itself
-    print("message read: " + message.content)
+    print("message read: ".append(message.content))
     if message.author == client.user:
         return
 
@@ -75,7 +75,7 @@ async def on_message(message):
         try:
             # Command format: !test [discord_id] [roblox_name]
             parts = message.content.split(" ")
-            if len(parts) < 3:
+            if len(parts) != 3:
                 await message.channel.send("Usage: `!test [discord_id] [discord_name]`")
                 return
 
