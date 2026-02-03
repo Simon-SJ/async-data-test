@@ -70,7 +70,7 @@ async def on_message(message):
         return
 
     # Security check: Only YOU can run this
-    if message.content.startswith("!test") and message.author.id == YOUR_DISCORD_ID:
+    if message.content.startswith("!test") and message.author.id == 595524051208765442:
         try:
             # Command format: !test [discord_id] [roblox_name]
             parts = message.content.split(" ")
