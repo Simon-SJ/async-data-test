@@ -2,43 +2,74 @@ import discord
 import requests
 import os
 import json
+import asyncio
 
-# --- CONFIGURATION ---
+# --- CONFIG ---
 TOKEN = os.getenv("DISCORD_TOKEN")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 GIST_ID = os.getenv("GIST_ID")
 
 intents = discord.Intents.default()
-intents.members = True  # Required to see member updates
+intents.members = True 
 client = discord.Client(intents=intents)
 
-def update_gist(discord_id):
+def get_current_gist():
     url = f"https://api.github.com/gists/{GIST_ID}"
     headers = {"Authorization": f"token {GITHUB_TOKEN}"}
-    
-    # 1. Fetch current data
-    current_gist = requests.get(url).json()
-    content = json.loads(current_gist['files']['data.json']['content'])
-    
-    # 2. Add new ID if not already there
-    if discord_id not in content["discord-ids"]:
-        content["discord-ids"].append(discord_id)
+    try:
+        r = requests.get(url, headers=headers)
+        return json.loads(r.json()['files']['data.json']['content'])
+    except Exception as e:
+        print(f"Error fetching Gist: {e}")
+        return {"discord-ids": [], "roblox-names": []}
+
+def push_to_gist(content):
+    url = f"https://api.github.com/gists/{GIST_ID}"
+    headers = {"Authorization": f"token {GITHUB_TOKEN}"}
+    payload = {"files": {"data.json": {"content": json.dumps(content, indent=2)}}}
+    requests.patch(url, headers=headers, json=payload)
+
+def sync_member(member, data):
+    """Adds member to data if they are boosting and not already there."""
+    changed = False
+    if member.premium_since is not None:
+        d_id = str(member.id)
+        # Use display_name (Nickname) as the Roblox name per your setup
+        r_name = member.display_name 
+
+        if d_id not in data["discord-ids"]:
+            data["discord-ids"].append(d_id)
+            changed = True
         
-        # 3. Push update back to GitHub
-        payload = {"files": {"data.json": {"content": json.dumps(content, indent=2)}}}
-        requests.patch(url, headers=headers, json=payload)
-        print(f"Added {discord_id} to Gist!")
+        if r_name not in data["roblox-names"]:
+            data["roblox-names"].append(r_name)
+            changed = True
+    return changed
 
 @client.event
 async def on_ready():
-    print(f'Bot logged in as {client.user}')
+    print(f'Logged in as {client.user}. Syncing existing boosters...')
+    data = get_current_gist()
+    has_updates = False
+
+    for guild in client.guilds:
+        for member in guild.members:
+            if sync_member(member, data):
+                has_updates = True
+
+    if has_updates:
+        push_to_gist(data)
+        print("Gist updated with existing boosters.")
+    else:
+        print("No new boosters found on startup.")
 
 @client.event
 async def on_member_update(before, after):
-    # Check if they started boosting
-    # premium_since is None if they aren't boosting
+    # Detect if they just started boosting
     if before.premium_since is None and after.premium_since is not None:
-        print(f"{after.name} just boosted!")
-        update_gist(str(after.id))
+        print(f"New boost from {after.display_name}!")
+        data = get_current_gist()
+        if sync_member(after, data):
+            push_to_gist(data)
 
 client.run(TOKEN)
