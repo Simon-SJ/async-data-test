@@ -1,0 +1,9 @@
+version: '3.8'
+services:
+  discord-bot:
+    build: .  # This tells Portainer to build the Dockerfile in your repo
+    restart: always
+    environment:
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - GIST_ID=${GIST_ID}
