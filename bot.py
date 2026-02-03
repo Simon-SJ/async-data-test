@@ -64,6 +64,38 @@ async def on_ready():
         print("No new boosters found on startup.")
 
 @client.event
+async def on_message(message):
+    # Ignore messages from the bot itself
+    if message.author == client.user:
+        return
+
+    # Security check: Only YOU can run this
+    if message.content.startswith("!test") and message.author.id == YOUR_DISCORD_ID:
+        try:
+            # Command format: !test [discord_id] [roblox_name]
+            parts = message.content.split(" ")
+            if len(parts) < 3:
+                await message.channel.send("Usage: `!test [discord_id] [roblox_name]`")
+                return
+
+            fake_id = parts[1]
+            fake_name = parts[2]
+
+            # Update the Gist
+            data = get_current_gist()
+            
+            if fake_id not in data["discord-ids"]:
+                data["discord-ids"].append(fake_id)
+            if fake_name not in data["roblox-names"]:
+                data["roblox-names"].append(fake_name)
+            
+            push_to_gist(data)
+            await message.channel.send(f"✅ Success! Added {fake_name} ({fake_id}) to the data file.")
+            
+        except Exception as e:
+            await message.channel.send(f"❌ Error: {str(e)}")
+
+@client.event
 async def on_member_update(before, after):
     # Detect if they just started boosting
     if before.premium_since is None and after.premium_since is not None:
