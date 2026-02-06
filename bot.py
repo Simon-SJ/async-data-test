@@ -111,8 +111,16 @@ async def on_message(message):
             
             user_id, message_new = parts[1], parts[2]
 
+            message_new_new = ""
+
+            for char in message_new:
+                if char == '_':
+                    message_new_new.append(' ')
+                else:
+                    message_new_new.append(char)
+
             user = await client.fetch_user(user_id)
-            await user.send(message_new)
+            await user.send(message_new_new)
 
         except Exception as e:
             await message.channel.send(f"❌ Error: {str(e)}")
