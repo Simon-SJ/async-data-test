@@ -61,6 +61,9 @@ async def on_message(message):
     if message.author == client.user:
             return
 
+    if message.guild == None:
+        print(f"{message.content} from {message.author}")
+
     if message.content.__contains__("<@1468279695547044038>"):
         rng = random.randint(1, 3)
         match rng: 
