@@ -65,7 +65,7 @@ async def on_message(message):
     if not message.content.startswith(":"):
         return
 
-    if message.content.startswith("test"):
+    if message.content.startswith("addUser"):
         try:
             parts = message.content.split(" ")
             if len(parts) != 3:
@@ -102,7 +102,7 @@ async def on_message(message):
 
             user = await client.fetch_user(user_id)
             await user.send(message)
-            
+
         except Exception as e:
             await message.channel.send(f"❌ Error: {str(e)}")
 
