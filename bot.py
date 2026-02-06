@@ -7,7 +7,7 @@ import json
 TOKEN = os.getenv("DISCORD_TOKEN")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 GIST_ID = os.getenv("GIST_ID")
-MY_ID = 595524051208765442
+ADMIN_IDs = {595524051208765442, 554691397601591306}
 
 intents = discord.Intents.default()
 intents.members = True 
@@ -59,7 +59,13 @@ async def on_message(message):
     if message.author == client.user:
         return
 
-    if message.content.startswith("!test") and message.author.id == MY_ID:
+    if not ADMIN_IDs.__contains__(message.author.id):
+        return
+
+    if not message.content.startswith(":"):
+        return
+
+    if message.content.startswith("test"):
         try:
             parts = message.content.split(" ")
             if len(parts) != 3:
@@ -82,6 +88,21 @@ async def on_message(message):
             
             push_to_gist(data)
             await message.channel.send(f"✅ Synced {new_name} in 2D array.")
+        except Exception as e:
+            await message.channel.send(f"❌ Error: {str(e)}")
+
+    if message.content.startswith("dm"):
+        try:
+            parts = message.content.split(" ")
+            if len(parts) != 3:
+                await message.channel.send("Usage: `!dm [user id] [message]`")
+                return
+            
+            user_id, message = parts[1], parts[2]
+
+            user = await client.fetch_user(user_id)
+            await user.send(message)
+            
         except Exception as e:
             await message.channel.send(f"❌ Error: {str(e)}")
 
