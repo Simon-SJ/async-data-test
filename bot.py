@@ -2,6 +2,7 @@ import discord
 import requests
 import os
 import json
+import random
 
 # --- CONFIG ---
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -58,17 +59,26 @@ async def on_member_update(before, after):
 @client.event
 async def on_message(message):
     if message.author == client.user:
-        return
+            return
+
+    if message.content.__contains__("<@1468279695547044038>"):
+        rng = random.randint(1, 3)
+        match rng: 
+            case 1: 
+                message.channel.send("hello")
+            case 2:
+                message.channel.send("hi")
+            case 3:
+                message.channel.send("What's up")
 
     author_id = message.author.id
     author_name = message.author.name
 
-    if not ADMIN_IDs.__contains__(message.author.id):
-        print("user is not an admin")
+    if not message.content.startswith(":"):
         return
 
-    if not message.content.startswith(":"):
-        print("prefix is not :")
+    if not ADMIN_IDs.__contains__(message.author.id):
+        print("user is not an admin")
         return
 
     print(f"{author_name} has sent {message.content}")
