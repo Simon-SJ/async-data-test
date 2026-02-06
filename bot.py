@@ -115,9 +115,9 @@ async def on_message(message):
 
             for char in message_new:
                 if char == '_':
-                    message_new_new.append(' ')
+                    message_new_new += ' '
                 else:
-                    message_new_new.append(char)
+                    message_new_new += char
 
             user = await client.fetch_user(user_id)
             await user.send(message_new_new)
