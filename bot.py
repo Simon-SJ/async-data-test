@@ -65,6 +65,8 @@ async def on_message(message):
     if not message.content.startswith(":"):
         return
 
+    print(await client.fetch_user(user_id).__name__() + " has sent " + message)
+
     if message.content.startswith("addUser"):
         try:
             parts = message.content.split(" ")
