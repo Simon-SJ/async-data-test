@@ -65,11 +65,11 @@ async def on_message(message):
         rng = random.randint(1, 3)
         match rng: 
             case 1: 
-                message.channel.send("hello")
+                await message.channel.send("hello")
             case 2:
-                message.channel.send("hi")
+                await message.channel.send("hi")
             case 3:
-                message.channel.send("What's up")
+                await message.channel.send("What's up")
 
     author_id = message.author.id
     author_name = message.author.name
