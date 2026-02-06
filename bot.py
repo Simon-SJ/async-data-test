@@ -8,6 +8,7 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 GIST_ID = os.getenv("GIST_ID")
 ADMIN_IDs = {595524051208765442, 554691397601591306}
+PREFIX = ":"
 
 intents = discord.Intents.default()
 intents.members = True 
@@ -59,15 +60,20 @@ async def on_message(message):
     if message.author == client.user:
         return
 
+    author_id = message.author.id
+    author_name = message.author.name
+
     if not ADMIN_IDs.__contains__(message.author.id):
+        print("user is not an admin")
         return
 
     if not message.content.startswith(":"):
+        print("prefix is not :")
         return
 
-    print(await client.fetch_user(message.author.id).__name__() + " has sent " + message)
+    print(f"{author_name} has sent {message.content}")
 
-    if message.content.startswith("addUser"):
+    if message.content.startswith(f"{PREFIX}addUser"):
         try:
             parts = message.content.split(" ")
             if len(parts) != 3:
@@ -89,21 +95,24 @@ async def on_message(message):
                 data.append([new_id, new_name])
             
             push_to_gist(data)
-            await message.channel.send(f"✅ Synced {new_name} in 2D array.")
+            await message.channel.send(f"✅ Added {new_name} in Server Boosteres")
         except Exception as e:
             await message.channel.send(f"❌ Error: {str(e)}")
 
-    if message.content.startswith("dm"):
+
+
+
+    if message.content.startswith(f"{PREFIX}dm"):
         try:
             parts = message.content.split(" ")
             if len(parts) != 3:
                 await message.channel.send("Usage: `!dm [user id] [message]`")
                 return
             
-            user_id, message = parts[1], parts[2]
+            user_id, message_new = parts[1], parts[2]
 
             user = await client.fetch_user(user_id)
-            await user.send(message)
+            await user.send(message_new)
 
         except Exception as e:
             await message.channel.send(f"❌ Error: {str(e)}")
