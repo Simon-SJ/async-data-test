@@ -74,8 +74,19 @@ async def on_message(message):
                 await message.channel.send("hi")
             case 3:
                 await message.channel.send("What's up")
+    elif message.content.__contains__("<@554691397601591306>"):
+        rng = random.randint(1, 20)
+        if rng == 1:
+            rng = random.randint(1, 3)
+            match rng: 
+                case 1: 
+                    await message.reply("hello")
+                case 2:
+                    await message.reply("hi")
+                case 3:
+                    await message.reply("What's up")
 
-    author_id = message.author.id
+    #author_id = message.author.id
     author_name = message.author.name
 
     if not message.content.startswith(":"):
