@@ -10,7 +10,6 @@ GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 GIST_ID = os.getenv("GIST_ID")
 ADMIN_IDs = {595524051208765442, 554691397601591306}
 PREFIX = ":"
-DmChannel = None
 
 intents = discord.Intents.default()
 intents.members = True 
@@ -49,7 +48,6 @@ async def on_ready():
     data = sync_all_boosters()
     push_to_gist(data)
     print(f"Sync complete. {len(data)} boosters found.")
-    DmChannel = client.get_channel(1470330654448156672)
 
 @client.event
 async def on_member_update(before, after):
@@ -64,6 +62,7 @@ async def on_message(message):
             return
 
     if message.guild == None:
+        DmChannel = client.get_channel(1470330654448156672)
         await DmChannel.send(f"{message.content} from {message.author}")
 
     if message.content.__contains__("<@1468279695547044038>"):
