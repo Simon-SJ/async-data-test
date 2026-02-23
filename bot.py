@@ -118,15 +118,13 @@ async def on_message(message):
     if not message.content.startswith(":"):
         return
 
-    message = message.lower()
-
     if not ADMIN_IDs.__contains__(message.author.id):
         print("user is not an admin")
         return
 
     print(f"{author_name} has sent {message.content}")
 
-    if message.content.startswith(f"{PREFIX}adduser"):
+    if message.content.lower.startswith(f"{PREFIX}adduser"):
         try:
             parts = message.content.split(" ")
             if len(parts) < 3:
@@ -170,7 +168,7 @@ async def on_message(message):
         except Exception as e:
             await message.channel.send(f"❌ Error: {str(e)}")
     
-    if message.content.startswith(f"{PREFIX}updateUser"):
+    if message.content.lower.startswith(f"{PREFIX}updateuser"):
         try:
             parts = message.content.split(" ")
             if len(parts) < 3:
@@ -218,7 +216,7 @@ async def on_message(message):
         except Exception as e:
             await message.channel.send(f"❌ Error updating user: {str(e)}")
 
-    if message.content.startswith(f"{PREFIX}dm"):
+    if message.content.lower.startswith(f"{PREFIX}dm"):
         try:
             parts = message.content.split(" ")
             if len(parts) != 3:
