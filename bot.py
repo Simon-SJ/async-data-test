@@ -109,6 +109,8 @@ async def on_message(message):
     if message.author.id not in ADMIN_IDs:
         return
 
+    print(f"{message.author.name} used {message.content}")
+
     # COMMAND: Add User
     if message.content.lower().startswith(f"{PREFIX}adduser"):
         try:
@@ -153,13 +155,35 @@ async def on_message(message):
             target_id = parts[1]
             roblox_name = " ".join(parts[2:])
             
+            # 1. Fetch ALL current data first to ensure we have the latest
+            manual_data = get_gist_file("manual.json")
             names = get_gist_file("names.json")
+            
+            # 2. Update the local dictionary with the new Roblox name
             names[target_id] = roblox_name
             
-            # Logic inside sync_and_publish handles merging this into the final list
-            sync_and_publish()
+            # 3. Perform the merge locally instead of calling sync_and_publish
+            # This ensures we use the NEW 'names' we just created
+            live_boosters = []
+            for guild in client.guilds:
+                for member in guild.members:
+                    if member.premium_since:
+                        live_boosters.append([str(member.id), member.display_name])
+
+            combined = {entry[0]: entry[1] for entry in manual_data}
+            for b_id, b_name in live_boosters:
+                combined[b_id] = b_name
+
+            final_output = []
+            for user_id, current_name in combined.items():
+                # Use the 'names' variable we just updated!
+                name_to_use = names.get(user_id, current_name)
+                final_output.append([user_id, name_to_use])
+
+            # 4. Push everything to GitHub
+            push_all_to_gist(final_output, manual_data, names)
             
-            await message.channel.send(f"✅ Linked ID `{target_id}` to Roblox: **{roblox_name}**")
+            await message.channel.send(f"✅ Successfully updated ID `{target_id}` to **{roblox_name}** and pushed to Gist.")
         except Exception as e:
             await message.channel.send(f"❌ Error: {str(e)}")
 
