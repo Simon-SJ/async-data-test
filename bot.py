@@ -18,7 +18,6 @@ intents.message_content = True
 client = discord.Client(intents=intents)
 
 def get_gist_file(filename):
-    """Helper to get content of a specific file in the Gist."""
     url = f"https://api.github.com/gists/{GIST_ID}"
     headers = {"Authorization": f"token {GITHUB_TOKEN}"}
     try:
@@ -26,25 +25,20 @@ def get_gist_file(filename):
         files = r.json().get('files', {})
         if filename in files:
             return json.loads(files[filename]['content'])
-        return []
-    except Exception as e:
-        print(f"Error fetching {filename}: {e}")
-        return []
+        return {} if "names" in filename else []
+    except:
+        return {} if "names" in filename else []
 
-def push_to_gist(data_content, manual_content=None):
-    """Updates the Gist. Can update data.json and manual.json simultaneously."""
+def push_all_to_gist(final_data, manual_data, name_overrides):
     url = f"https://api.github.com/gists/{GIST_ID}"
     headers = {"Authorization": f"token {GITHUB_TOKEN}"}
-    
-    files_payload = {
-        "data.json": {"content": json.dumps(data_content, indent=2)}
+    payload = {
+        "files": {
+            "data.json": {"content": json.dumps(final_data, indent=2)},
+            "manual.json": {"content": json.dumps(manual_data, indent=2)},
+            "names.json": {"content": json.dumps(name_overrides, indent=2)}
+        }
     }
-    
-    # If we are specifically updating the manual list, include it
-    if manual_content is not None:
-        files_payload["manual.json"] = {"content": json.dumps(manual_content, indent=2)}
-
-    payload = {"files": files_payload}
     requests.patch(url, headers=headers, json=payload)
 
 def update_full_list():
@@ -70,6 +64,41 @@ def update_full_list():
     # 4. Push only the combined result to data.json
     push_to_gist(final_data)
     return len(final_data)
+
+def sync_and_publish():
+    # 1. Load our saved data
+    manual_list = get_gist_file("manual.json") # [[id, name], ...]
+    name_overrides = get_gist_file("names.json") # {id: roblox_name}
+
+    # 2. Get live boosters from Discord
+    live_boosters = []
+    for guild in client.guilds:
+        for member in guild.members:
+            if member.premium_since:
+                live_boosters.append([str(member.id), member.display_name])
+
+    # 3. Combine lists (ID is key)
+    combined = {}
+    
+    # Add manual users first
+    for m_id, m_name in manual_list:
+        combined[m_id] = m_name
+        
+    # Add live boosters (overwrites if they are in both)
+    for b_id, b_name in live_boosters:
+        combined[b_id] = b_name
+
+    # 4. APPLY NAME OVERRIDES (The Roblox names)
+    # This loop checks if we have a saved Roblox name for ANYONE in the list
+    final_output = []
+    for user_id, current_name in combined.items():
+        # If we have a saved name for this ID, use it. Otherwise, use Discord name.
+        name_to_use = name_overrides.get(user_id, current_name)
+        final_output.append([user_id, name_to_use])
+
+    # 5. Push to GitHub
+    push_all_to_gist(final_output, manual_list, name_overrides)
+    return len(final_output)
 
 @client.event
 async def on_ready():
@@ -172,49 +201,26 @@ async def on_message(message):
         try:
             parts = message.content.split(" ")
             if len(parts) < 3:
-                await message.channel.send("Usage: `:updateUser [id] [new_roblox_name]`")
+                await message.channel.send("Usage: `:updateuser [id] [roblox_name]`")
                 return
 
             target_id = parts[1]
-            new_name = " ".join(parts[2:])
+            roblox_name = " ".join(parts[2:])
             
-            # 1. Fetch current manual list
+            # 1. Update the name mapping
+            names = get_gist_file("names.json")
+            names[target_id] = roblox_name
+            
+            # 2. Re-run the sync to update data.json
+            # Note: We need to pull manual_data to pass it back to the push function
             manual_data = get_gist_file("manual.json")
-
-            # 2. Update the entry if ID matches
-            found_in_manual = False
-            for entry in manual_data:
-                if entry[0] == target_id:
-                    entry[1] = new_name
-                    found_in_manual = True
-                    break
             
-            if not found_in_manual:
-                await message.channel.send(f"⚠️ ID `{target_id}` isn't in the manual list. Use `:addUser` instead if they aren't a server booster.")
-                return
-
-            # 3. Re-sync everything to update data.json
-            # Get live boosters
-            live_boosters = []
-            for guild in client.guilds:
-                for member in guild.members:
-                    if member.premium_since is not None:
-                        live_boosters.append([str(member.id), member.display_name])
-
-            # Merge manual list into live boosters
-            combined = {entry[0]: entry[1] for entry in manual_data}
-            for b_id, b_name in live_boosters:
-                combined[b_id] = b_name
+            # Use the logic from step 2 to merge and push
+            sync_and_publish()
             
-            final_data = [[uid, name] for uid, name in combined.items()]
-
-            # 4. Push updates
-            push_to_gist(final_data, manual_content=manual_data)
-            
-            await message.channel.send(f"✅ Updated ID `{target_id}` to Roblox name: **{new_name}**")
-
+            await message.channel.send(f"✅ Linked ID `{target_id}` to Roblox: **{roblox_name}**")
         except Exception as e:
-            await message.channel.send(f"❌ Error updating user: {str(e)}")
+            await message.channel.send(f"❌ Error: {str(e)}")
 
     if message.content.lower.startswith(f"{PREFIX}dm"):
         try:
