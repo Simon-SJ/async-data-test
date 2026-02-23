@@ -153,7 +153,7 @@ async def on_message(message):
 
     print(f"{author_name} has sent {message.content}")
 
-    if message.content.lower.startswith(f"{PREFIX}adduser"):
+    if message.content.lower().startswith(f"{PREFIX}adduser"):
         try:
             parts = message.content.split(" ")
             if len(parts) < 3:
@@ -197,7 +197,7 @@ async def on_message(message):
         except Exception as e:
             await message.channel.send(f"❌ Error: {str(e)}")
     
-    if message.content.lower.startswith(f"{PREFIX}updateuser"):
+    if message.content.lower().startswith(f"{PREFIX}updateuser"):
         try:
             parts = message.content.split(" ")
             if len(parts) < 3:
