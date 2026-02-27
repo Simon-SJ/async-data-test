@@ -122,9 +122,11 @@ async def on_message(message):
             new_id = parts[1]
             new_name = " ".join(parts[2:])
             
+            # 1. Fetch current data from Gist
             manual_data = get_gist_file("manual.json")
-            
-            # Update or Append
+            name_overrides = get_gist_file("names.json")
+
+            # 2. Update the local manual list
             found = False
             for entry in manual_data:
                 if entry[0] == new_id:
@@ -134,13 +136,27 @@ async def on_message(message):
             if not found:
                 manual_data.append([new_id, new_name])
 
-            # Use our unified push function (requires fetching names too)
-            name_overrides = get_gist_file("names.json")
+            # 3. Merge with live boosters locally
+            live_boosters = []
+            for guild in client.guilds:
+                for member in guild.members:
+                    if member.premium_since is not None:
+                        live_boosters.append([str(member.id), member.display_name])
+
+            combined = {entry[0]: entry[1] for entry in manual_data}
+            for b_id, b_name in live_boosters:
+                combined[b_id] = b_name
             
-            # This pushes the manual update and refreshes data.json
-            sync_and_publish() 
+            # Apply Roblox names if they exist
+            final_data = []
+            for uid, current_name in combined.items():
+                name_to_use = name_overrides.get(uid, current_name)
+                final_data.append([uid, name_to_use])
+
+            # 4. Push everything to GitHub
+            push_all_to_gist(final_data, manual_data, name_overrides)
             
-            await message.channel.send(f"✅ Added {new_name} to manual list and synced.")
+            await message.channel.send(f"✅ Added **{new_name}** to manual list.")
         except Exception as e:
             await message.channel.send(f"❌ Error: {str(e)}")
     
