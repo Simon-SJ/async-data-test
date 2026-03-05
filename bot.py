@@ -1,4 +1,5 @@
 import discord
+from discord import app_commands
 import requests
 import os
 import json
@@ -8,14 +9,22 @@ import random
 TOKEN = os.getenv("DISCORD_TOKEN")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 GIST_ID = os.getenv("GIST_ID")
-            #simonsj             guy56790            scripto
 ADMIN_IDs = {595524051208765442, 554691397601591306, 781870312194703380}
-PREFIX = ":"
 
-intents = discord.Intents.default()
-intents.members = True 
-intents.message_content = True
-client = discord.Client(intents=intents)
+class MyClient(discord.Client):
+    def __init__(self):
+        intents = discord.Intents.default()
+        intents.members = True 
+        intents.message_content = True
+        super().__init__(intents=intents)
+        self.tree = app_commands.CommandTree(self)
+
+    async def setup_hook(self):
+        # This makes the commands show up in Discord
+        await self.tree.sync()
+        print("Slash commands synced.")
+
+client = MyClient()
 
 # --- HELPER FUNCTIONS ---
 
@@ -43,33 +52,78 @@ def push_all_to_gist(final_data, manual_data, name_overrides):
     }
     requests.patch(url, headers=headers, json=payload)
 
-def sync_and_publish():
-    """The master function that merges Discord, Manual, and Roblox Name Overrides."""
-    # 1. Load saved data from Gist
-    manual_list = get_gist_file("manual.json")
-    name_overrides = get_gist_file("names.json")
+def sync_and_publish(manual_override=None, names_override=None):
+    """The master function from your original code, updated to accept local changes."""
+    manual_list = manual_override if manual_override is not None else get_gist_file("manual.json")
+    name_overrides = names_override if names_override is not None else get_gist_file("names.json")
 
-    # 2. Get live boosters from Discord
     live_boosters = []
     for guild in client.guilds:
         for member in guild.members:
             if member.premium_since:
                 live_boosters.append([str(member.id), member.display_name])
 
-    # 3. Combine lists (Discord boosters + Manual additions)
     combined = {entry[0]: entry[1] for entry in manual_list}
     for b_id, b_name in live_boosters:
         combined[b_id] = b_name
 
-    # 4. Apply Roblox Name Overrides (If ID exists in names.json, use that name instead)
     final_output = []
     for user_id, current_name in combined.items():
         name_to_use = name_overrides.get(user_id, current_name)
         final_output.append([user_id, name_to_use])
 
-    # 5. Push all files back to Gist
     push_all_to_gist(final_output, manual_list, name_overrides)
     return len(final_output)
+
+# --- SLASH COMMAND GROUP ---
+
+class UserGroup(app_commands.Group):
+    def __init__(self):
+        super().__init__(name="user", description="Manage booster list")
+
+    @app_commands.command(name="add", description="Add a user to the manual list")
+    async def add(self, interaction: discord.Interaction, member: discord.Member, roblox_name: str):
+        if interaction.user.id not in ADMIN_IDs:
+            await interaction.response.send_message("❌ No permission.", ephemeral=True)
+            return
+
+        await interaction.response.defer()
+        manual_data = get_gist_file("manual.json")
+        name_overrides = get_gist_file("names.json")
+        
+        display_name = roblox_name if roblox_name else member.display_name
+        user_id_str = str(member.id)
+
+        found = False
+        for entry in manual_data:
+            if entry[0] == user_id_str:
+                entry[1] = display_name
+                found = True
+                break
+        if not found:
+            manual_data.append([user_id_str, display_name])
+
+        count = sync_and_publish(manual_override=manual_data, names_override=name_overrides)
+        await interaction.followup.send(f"✅ Added **{member.name}** as '{display_name}'. Total: {count}")
+
+    @app_commands.command(name="update", description="Update a user's Roblox name")
+    async def update(self, interaction: discord.Interaction, member: discord.Member, roblox_name: str):
+        if interaction.user.id not in ADMIN_IDs:
+            await interaction.response.send_message("❌ No permission.", ephemeral=True)
+            return
+
+        await interaction.response.defer()
+        manual_data = get_gist_file("manual.json")
+        names = get_gist_file("names.json")
+        
+        names[str(member.id)] = roblox_name
+        
+        count = sync_and_publish(manual_override=manual_data, names_override=names)
+        await interaction.followup.send(f"✅ Updated **{member.name}** to Roblox name **{roblox_name}**.")
+
+# Register Group
+user_group = UserGroup()
+client.tree.add_command(user_group)
 
 # --- EVENTS ---
 
@@ -81,7 +135,6 @@ async def on_ready():
 
 @client.event
 async def on_member_update(before, after):
-    # Trigger if someone starts/stops boosting or changes their Discord nickname
     if (before.premium_since != after.premium_since) or (before.display_name != after.display_name):
         sync_and_publish()
 
@@ -90,134 +143,11 @@ async def on_message(message):
     if message.author == client.user:
         return
 
-    # DM Forwarder logic
-    if message.guild is None:
-        DmChannel = client.get_channel(1470330654448156672)
-        if DmChannel:
-            await DmChannel.send(f"{message.content} from {message.author}")
-
-    # Mentions/Fun logic
-    if "<@1468279695547044038>" in message.content:
+    # Mentions logic
+    if f"<@{client.user.id}>" in message.content:
         await message.channel.send(random.choice(["hello", "hi", "What's up"]))
     elif "<@554691397601591306>" in message.content:
         if random.randint(1, 20) == 1:
             await message.reply(random.choice(["hello", "hi", "What's up"]))
-
-    if not message.content.startswith(PREFIX):
-        return
-
-    if message.author.id not in ADMIN_IDs:
-        return
-
-    print(f"{message.author.name} used {message.content}")
-
-    # COMMAND: Add User
-    if message.content.lower().startswith(f"{PREFIX}adduser"):
-        try:
-            parts = message.content.split(" ")
-            if len(parts) < 3:
-                await message.channel.send("Usage: `:addUser [id] [name]`")
-                return
-
-            new_id = parts[1]
-            new_name = " ".join(parts[2:])
-            
-            # 1. Fetch current data from Gist
-            manual_data = get_gist_file("manual.json")
-            name_overrides = get_gist_file("names.json")
-
-            # 2. Update the local manual list
-            found = False
-            for entry in manual_data:
-                if entry[0] == new_id:
-                    entry[1] = new_name
-                    found = True
-                    break
-            if not found:
-                manual_data.append([new_id, new_name])
-
-            # 3. Merge with live boosters locally
-            live_boosters = []
-            for guild in client.guilds:
-                for member in guild.members:
-                    if member.premium_since is not None:
-                        live_boosters.append([str(member.id), member.display_name])
-
-            combined = {entry[0]: entry[1] for entry in manual_data}
-            for b_id, b_name in live_boosters:
-                combined[b_id] = b_name
-            
-            # Apply Roblox names if they exist
-            final_data = []
-            for uid, current_name in combined.items():
-                name_to_use = name_overrides.get(uid, current_name)
-                final_data.append([uid, name_to_use])
-
-            # 4. Push everything to GitHub
-            push_all_to_gist(final_data, manual_data, name_overrides)
-            
-            await message.channel.send(f"✅ Added **{new_name}** to manual list.")
-        except Exception as e:
-            await message.channel.send(f"❌ Error: {str(e)}")
-    
-    # COMMAND: Update Roblox Name (Works for ANYONE)
-    if message.content.lower().startswith(f"{PREFIX}updateuser"):
-        try:
-            parts = message.content.split(" ")
-            if len(parts) < 3:
-                await message.channel.send("Usage: `:updateuser [id] [roblox_name]`")
-                return
-
-            target_id = parts[1]
-            roblox_name = " ".join(parts[2:])
-            
-            # 1. Fetch ALL current data first to ensure we have the latest
-            manual_data = get_gist_file("manual.json")
-            names = get_gist_file("names.json")
-            
-            # 2. Update the local dictionary with the new Roblox name
-            names[target_id] = roblox_name
-            
-            # 3. Perform the merge locally instead of calling sync_and_publish
-            # This ensures we use the NEW 'names' we just created
-            live_boosters = []
-            for guild in client.guilds:
-                for member in guild.members:
-                    if member.premium_since:
-                        live_boosters.append([str(member.id), member.display_name])
-
-            combined = {entry[0]: entry[1] for entry in manual_data}
-            for b_id, b_name in live_boosters:
-                combined[b_id] = b_name
-
-            final_output = []
-            for user_id, current_name in combined.items():
-                # Use the 'names' variable we just updated!
-                name_to_use = names.get(user_id, current_name)
-                final_output.append([user_id, name_to_use])
-
-            # 4. Push everything to GitHub
-            push_all_to_gist(final_output, manual_data, names)
-            
-            await message.channel.send(f"✅ Successfully updated ID `{target_id}` to **{roblox_name}** and pushed to Gist.")
-        except Exception as e:
-            await message.channel.send(f"❌ Error: {str(e)}")
-
-    # COMMAND: DM
-    if message.content.lower().startswith(f"{PREFIX}dm"):
-        try:
-            parts = message.content.split(" ")
-            if len(parts) < 3:
-                await message.channel.send("Usage: `:dm [user id] [message]`")
-                return
-            
-            user_id = parts[1]
-            text = " ".join(parts[2:]).replace('_', ' ')
-
-            user = await client.fetch_user(user_id)
-            await user.send(text)
-            await message.channel.send(f"✉️ Sent DM to {user.name}")
-        except Exception as e:
-            await message.channel.send(f"❌ Error: {str(e)}")
 
 client.run(TOKEN)
