@@ -80,7 +80,7 @@ class UserGroup(app_commands.Group):
         super().__init__(name="user", description="Manage booster list")
 
     @app_commands.command(name="add", description="Add a user to the manual list")
-    async def add(self, interaction: discord.Interaction, member: discord.Member, custom_name: str = None):
+    async def add(self, interaction: discord.Interaction, member: discord.Member, roblox_name: str):
         if interaction.user.id not in ADMIN_IDs:
             await interaction.response.send_message("❌ No permission.", ephemeral=True)
             return
@@ -89,7 +89,7 @@ class UserGroup(app_commands.Group):
         manual_data = get_gist_file("manual.json")
         name_overrides = get_gist_file("names.json")
         
-        display_name = custom_name if custom_name else member.display_name
+        display_name = roblox_name if roblox_name else member.display_name
         user_id_str = str(member.id)
 
         found = False
