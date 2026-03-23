@@ -10,6 +10,7 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 GIST_ID = os.getenv("GIST_ID")
 ADMIN_IDs = {595524051208765442, 554691397601591306, 781870312194703380}
+MODERATOR_ROLE_ID = 1279483933943136368
 
 class MyClient(discord.Client):
     def __init__(self):
@@ -39,14 +40,15 @@ def get_gist_file(filename):
     except:
         return {} if "names" in filename else []
 
-def push_all_to_gist(final_data, manual_data, name_overrides):
+def push_all_to_gist(final_data, manual_data, name_overrides, moderator_data):
     url = f"https://api.github.com/gists/{GIST_ID}"
     headers = {"Authorization": f"token {GITHUB_TOKEN}"}
     payload = {
         "files": {
             "data.json": {"content": json.dumps(final_data, indent=2)},
             "manual.json": {"content": json.dumps(manual_data, indent=2)},
-            "names.json": {"content": json.dumps(name_overrides, indent=2)}
+            "names.json": {"content": json.dumps(name_overrides, indent=2)},
+            "moderators.json": {"content": json.dumps(moderator_data, indent=2)} # New file
         }
     }
     requests.patch(url, headers=headers, json=payload)
@@ -56,11 +58,19 @@ def sync_and_publish(manual_override=None, names_override=None):
     name_overrides = names_override if names_override is not None else get_gist_file("names.json")
 
     live_boosters = []
+    moderators = [] # Initialize moderator list
+
     for guild in client.guilds:
         for member in guild.members:
+            # Check for Boosters
             if member.premium_since:
                 live_boosters.append([str(member.id), member.display_name])
+            
+            # Check for Moderators (Specific Role)
+            if any(role.id == MODERATOR_ROLE_ID for role in member.roles):
+                moderators.append([str(member.id), member.display_name])
 
+    # Combine Booster/Manual logic
     combined = {entry[0]: entry[1] for entry in manual_list}
     for b_id, b_name in live_boosters:
         combined[b_id] = b_name
@@ -70,11 +80,11 @@ def sync_and_publish(manual_override=None, names_override=None):
         name_to_use = name_overrides.get(user_id, current_name)
         final_output.append([user_id, name_to_use])
 
-    push_all_to_gist(final_output, manual_list, name_overrides)
+    # Push all 4 files now
+    push_all_to_gist(final_output, manual_list, name_overrides, moderators)
     return len(final_output)
 
 # --- SLASH COMMANDS ---
-
 class UserGroup(app_commands.Group):
     def __init__(self):
         super().__init__(name="user", description="Manage booster list")
@@ -167,8 +177,12 @@ async def on_ready():
 
 @client.event
 async def on_member_update(before, after):
-    if (before.premium_since != after.premium_since) or (before.display_name != after.display_name):
+    # Sync if Boost status, Nickname, OR Roles change
+    if (before.premium_since != after.premium_since) or \
+       (before.display_name != after.display_name) or \
+       (before.roles != after.roles):
         sync_and_publish()
+
 
 @client.event
 async def on_message(message):
