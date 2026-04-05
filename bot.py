@@ -196,8 +196,5 @@ async def on_message(message):
 
     if f"<@{client.user.id}>" in message.content:
         await message.channel.send(random.choice(["hello", "hi", "What's up"]))
-    elif "<@554691397601591306>" in message.content:
-        if random.randint(1, 20) == 1:
-            await message.reply(random.choice(["hello", "hi", "What's up"]))
 
 client.run(TOKEN)
