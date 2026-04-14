@@ -13,7 +13,7 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 GIST_ID = os.getenv("GIST_ID")
 ADMIN_IDs = {595524051208765442, 554691397601591306, 781870312194703380}
-MODERATOR_ROLE_ID = 1279483933943136368
+MODERATOR_ROLE_IDS = {1271205269183139891, 1091729426850521105, 1271208960463999079, 1145150303210049576, 1411096066602045533, 1271202265688051722}
 
 class MyClient(discord.Client):
     def __init__(self):
@@ -30,6 +30,13 @@ class MyClient(discord.Client):
 client = MyClient()
 
 # --- HELPER FUNCTIONS ---
+
+def IsAdmin(user):
+    if user.id in ADMIN_IDs:
+        return True
+    if any(role.id in MODERATOR_ROLE_IDS for role in interaction.user.roles):
+            return True
+    return False
 
 def get_gist_file(filename):
     url = f"https://api.github.com/gists/{GIST_ID}"
@@ -94,7 +101,7 @@ class UserGroup(app_commands.Group):
 
     @app_commands.command(name="add", description="Add a user to the manual list")
     async def add(self, interaction: discord.Interaction, member: discord.Member, roblox_name: str):
-        if interaction.user.id not in ADMIN_IDs:
+        if not IsAdmin(interaction.user):
             await interaction.response.send_message("❌ No permission.", ephemeral=True)
             return
 
@@ -119,7 +126,7 @@ class UserGroup(app_commands.Group):
 
     @app_commands.command(name="update", description="Update a user's Roblox name")
     async def update(self, interaction: discord.Interaction, member: discord.Member, roblox_name: str):
-        if interaction.user.id not in ADMIN_IDs:
+        if not IsAdmin(interaction.user):
             await interaction.response.send_message("❌ No permission.", ephemeral=True)
             return
 
@@ -134,7 +141,7 @@ class UserGroup(app_commands.Group):
 
     @app_commands.command(name="delete", description="Remove a user from manual list and name overrides")
     async def delete(self, interaction: discord.Interaction, member: discord.Member):
-        if interaction.user.id not in ADMIN_IDs:
+        if not IsAdmin(interaction.user):
             await interaction.response.send_message("❌ No permission.", ephemeral=True)
             return
 
@@ -155,9 +162,9 @@ class UserGroup(app_commands.Group):
 
 @client.tree.command(name="sync", description="Force an immediate sync between Discord and Gist")
 async def force_sync(interaction: discord.Interaction):
-    if interaction.user.id not in ADMIN_IDs:
-        await interaction.response.send_message("❌ No permission.", ephemeral=True)
-        return
+    if not IsAdmin(interaction.user):
+            await interaction.response.send_message("❌ No permission.", ephemeral=True)
+            return
 
     await interaction.response.defer()
     try:
@@ -228,7 +235,7 @@ class moderationGroup(app_commands.Group):
 
     @app_commands.command(name="ban", description="Ban a Roblox user by ID or username")
     async def ban(self, interaction: discord.Interaction, target: str, time_minutes: float, reason: str = "No reason provided"):
-        if interaction.user.id not in ADMIN_IDs:
+        if not IsAdmin(interaction.user):
             await interaction.response.send_message("❌ No permission.", ephemeral=True)
             return
 
