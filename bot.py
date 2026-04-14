@@ -204,9 +204,9 @@ class moderationGroup(app_commands.Group):
     def __init__(self):
         super().__init__(name="moderation", description="for mods")
 
-
-    @client.tree.command(name="ban", description="Ban a roblox user")
-    async def ban(self, interaction: discord.Interaction, target: str, Time: float, reason: str = "No reason provided"):
+    # Use @app_commands.command, and ensure parameter 'time_minutes' is lowercase
+    @app_commands.command(name="ban", description="Ban a roblox user")
+    async def ban(self, interaction: discord.Interaction, target: str, time_minutes: float, reason: str = "No reason provided"):
         if interaction.user.id not in ADMIN_IDs:
             await interaction.response.send_message("❌ No permission.", ephemeral=True)
             return
@@ -214,7 +214,9 @@ class moderationGroup(app_commands.Group):
         await interaction.response.defer()
 
         user_id = target 
+        # Ensure we use the correct variable name defined in the arguments above
         duration_string = f"{time_minutes * 60}s"
+        
         url = f"https://apis.roblox.com/cloud/v2/universes/{UNIVERSE_ID}/user-restrictions/{user_id}"
         
         headers = {
@@ -235,12 +237,14 @@ class moderationGroup(app_commands.Group):
         async with aiohttp.ClientSession() as session:
             async with session.patch(url, headers=headers, json=payload) as response:
                 if response.status == 200:
-                    await interaction.followup.send(f"✅ Successfully banned ID `{user_id}` for {Time}s.")
+                    await interaction.followup.send(f"✅ Successfully banned ID `{user_id}` for {time_minutes} minutes.")
                 else:
                     error_text = await response.text()
                     await interaction.followup.send(f"❌ Failed to ban. Status: {response.status}\n`{error_text}`")
 
+# These lines at the end are correct
 mod_group = moderationGroup()
 client.tree.add_command(mod_group)
+
 
 client.run(TOKEN)
