@@ -7,3 +7,4 @@ services:
       - DISCORD_TOKEN=${DISCORD_TOKEN}
       - GITHUB_TOKEN=${GITHUB_TOKEN}
       - GIST_ID=${GIST_ID}
+      - ROBLOX_API_KEY=${ROBLOX_API_KEY}
