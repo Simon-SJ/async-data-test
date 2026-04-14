@@ -75,10 +75,6 @@ def sync_and_publish(manual_override=None, names_override=None):
             # Check for Boosters
             if member.premium_since:
                 live_boosters.append([str(member.id), member.display_name])
-            
-            # Check for Moderators (Specific Role)
-            if IsAdmin(member):
-                moderators.append([str(member.id), member.display_name])
 
     # Combine Booster/Manual logic
     combined = {entry[0]: entry[1] for entry in manual_list}
