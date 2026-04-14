@@ -34,7 +34,7 @@ client = MyClient()
 def IsAdmin(user):
     if user.id in ADMIN_IDs:
         return True
-    if any(role.id in MODERATOR_ROLE_IDS for role in interaction.user.roles):
+    if any(role.id in MODERATOR_ROLE_IDS for role in user.roles):
             return True
     return False
 
