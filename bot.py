@@ -7,7 +7,7 @@ import random
 import aiohttp
 
 # --- CONFIG ---
-UNIVERSE_ID = 9256427353
+UNIVERSE_ID = 3467628732
 ROBLOX_API_KEY = os.getenv("ROBLOX_API_KEY")
 TOKEN = os.getenv("DISCORD_TOKEN")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
