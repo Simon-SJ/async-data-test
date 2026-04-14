@@ -77,7 +77,7 @@ def sync_and_publish(manual_override=None, names_override=None):
                 live_boosters.append([str(member.id), member.display_name])
             
             # Check for Moderators (Specific Role)
-            if any(role.id == MODERATOR_ROLE_ID for role in member.roles):
+            if IsAdmin(member):
                 moderators.append([str(member.id), member.display_name])
 
     # Combine Booster/Manual logic
