@@ -4,8 +4,11 @@ import requests
 import os
 import json
 import random
+import aiohttp
 
 # --- CONFIG ---
+UNIVERSE_ID = 9256427353
+ROBLOX_API_KEY = os.getenv("ROBLOX_API_KEY")
 TOKEN = os.getenv("DISCORD_TOKEN")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 GIST_ID = os.getenv("GIST_ID")
@@ -196,5 +199,48 @@ async def on_message(message):
 
     if f"<@{client.user.id}>" in message.content:
         await message.channel.send(random.choice(["hello", "hi", "What's up"]))
+
+class moderationGroup(app_commands.Group):
+    def __init__(self):
+        super().__init__(name="moderation", description="for mods")
+
+
+    @client.tree.command(name="ban", description="Ban a roblox user")
+    async def ban(self, interaction: discord.Interaction, target: str, Time: float, reason: str = "No reason provided"):
+        if interaction.user.id not in ADMIN_IDs:
+            await interaction.response.send_message("❌ No permission.", ephemeral=True)
+            return
+
+        await interaction.response.defer()
+
+        user_id = target 
+        duration_string = f"{time_minutes * 60}s"
+        url = f"https://apis.roblox.com/cloud/v2/universes/{UNIVERSE_ID}/user-restrictions/{user_id}"
+        
+        headers = {
+            "x-api-key": ROBLOX_API_KEY,
+            "content-type": "application/json"
+        }
+
+        payload = {
+            "gameJoinRestriction": {
+                "active": True,
+                "duration": duration_string,
+                "privateReason": reason,
+                "displayReason": reason,
+                "excludeAltAccounts": False
+            }
+        }
+
+        async with aiohttp.ClientSession() as session:
+            async with session.patch(url, headers=headers, json=payload) as response:
+                if response.status == 200:
+                    await interaction.followup.send(f"✅ Successfully banned ID `{user_id}` for {Time}s.")
+                else:
+                    error_text = await response.text()
+                    await interaction.followup.send(f"❌ Failed to ban. Status: {response.status}\n`{error_text}`")
+
+mod_group = moderationGroup()
+client.tree.add_command(mod_group)
 
 client.run(TOKEN)
