@@ -269,6 +269,84 @@ class moderationGroup(app_commands.Group):
                     error_text = await response.text()
                     await interaction.followup.send(f"❌ Failed to ban. Status: {response.status}\n`{error_text}`")
 
+    @app_commands.command(name="globalban", description="Ban a user from all servers the bot is in")
+    @app_commands.describe(user="User ID to ban", reason="Reason for the ban")
+    async def globalban(self, interaction: discord.Interaction, user: discord.User, reason: str = "No reason provided"):
+        if not IsAdmin(interaction.user):
+            await interaction.response.send_message("❌ No permission.", ephemeral=True)
+            return
+
+        await interaction.response.defer()
+
+        success, failed, skipped = [], [], []
+
+        for guild in client.guilds:
+            me = guild.me
+            if not me.guild_permissions.ban_members:
+                skipped.append(f"{guild.name} (no permission)")
+                continue
+
+            # Avoid banning someone with a higher/equal role than the bot
+            member = guild.get_member(user.id)
+            if member and me.top_role <= member.top_role:
+                skipped.append(f"{guild.name} (role hierarchy)")
+                continue
+
+            try:
+                await guild.ban(user, reason=f"Global ban by {interaction.user} ({interaction.user.id}): {reason}")
+                success.append(guild.name)
+            except discord.Forbidden:
+                failed.append(f"{guild.name} (forbidden)")
+            except discord.HTTPException as e:
+                failed.append(f"{guild.name} ({e})")
+
+        lines = [f"✅ Globally banned `{user}` (ID: `{user.id}`)"]
+        lines.append(f"**Banned in {len(success)}/{len(client.guilds)} servers**")
+        if skipped:
+            lines.append(f"⏭️ Skipped: {', '.join(skipped)}")
+        if failed:
+            lines.append(f"❌ Failed: {', '.join(failed)}")
+
+        await interaction.followup.send("\n".join(lines))
+
+
+    @app_commands.command(name="globalunban", description="Unban a user from all servers the bot is in")
+    @app_commands.describe(user="User ID to unban", reason="Reason for the unban")
+    async def globalunban(self, interaction: discord.Interaction, user: discord.User, reason: str = "No reason provided"):
+        if not IsAdmin(interaction.user):
+            await interaction.response.send_message("❌ No permission.", ephemeral=True)
+            return
+
+        await interaction.response.defer()
+
+        success, failed, skipped, not_banned = [], [], [], []
+
+        for guild in client.guilds:
+            me = guild.me
+            if not me.guild_permissions.ban_members:
+                skipped.append(f"{guild.name} (no permission)")
+                continue
+
+            try:
+                await guild.unban(user, reason=f"Global unban by {interaction.user} ({interaction.user.id}): {reason}")
+                success.append(guild.name)
+            except discord.NotFound:
+                not_banned.append(guild.name)
+            except discord.Forbidden:
+                failed.append(f"{guild.name} (forbidden)")
+            except discord.HTTPException as e:
+                failed.append(f"{guild.name} ({e})")
+
+        lines = [f"✅ Globally unbanned `{user}` (ID: `{user.id}`)"]
+        lines.append(f"**Unbanned in {len(success)}/{len(client.guilds)} servers**")
+        if not_banned:
+            lines.append(f"ℹ️ Not banned in: {', '.join(not_banned)}")
+        if skipped:
+            lines.append(f"⏭️ Skipped: {', '.join(skipped)}")
+        if failed:
+            lines.append(f"❌ Failed: {', '.join(failed)}")
+
+        await interaction.followup.send("\n".join(lines))
 mod_group = moderationGroup()
 client.tree.add_command(mod_group)
 
