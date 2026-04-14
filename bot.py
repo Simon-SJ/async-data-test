@@ -204,8 +204,29 @@ class moderationGroup(app_commands.Group):
     def __init__(self):
         super().__init__(name="moderation", description="for mods")
 
-    # Use @app_commands.command, and ensure parameter 'time_minutes' is lowercase
-    @app_commands.command(name="ban", description="Ban a roblox user")
+    async def resolve_user_id(self, target: str) -> tuple[str | None, str | None]:
+        """Returns (user_id, error_message). Accepts a numeric ID or a username."""
+        if target.isdigit():
+            return target, None
+
+        # Username lookup via Roblox API
+        url = "https://users.roblox.com/v1/usernames/users"
+        payload = {"usernames": [target], "excludeBannedUsers": False}
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, json=payload) as response:
+                if response.status != 200:
+                    return None, f"Failed to contact Roblox API. Status: {response.status}"
+                
+                data = await response.json()
+                users = data.get("data", [])
+
+                if not users:
+                    return None, f"No Roblox user found with username `{target}`."
+
+                return str(users[0]["id"]), None
+
+    @app_commands.command(name="ban", description="Ban a Roblox user by ID or username")
     async def ban(self, interaction: discord.Interaction, target: str, time_minutes: float, reason: str = "No reason provided"):
         if interaction.user.id not in ADMIN_IDs:
             await interaction.response.send_message("❌ No permission.", ephemeral=True)
@@ -213,12 +234,14 @@ class moderationGroup(app_commands.Group):
 
         await interaction.response.defer()
 
-        user_id = target 
-        # Ensure we use the correct variable name defined in the arguments above
+        user_id, error = await self.resolve_user_id(target)
+        if error:
+            await interaction.followup.send(f"❌ {error}")
+            return
+
         duration_string = f"{time_minutes * 60}s"
-        
         url = f"https://apis.roblox.com/cloud/v2/universes/{UNIVERSE_ID}/user-restrictions/{user_id}"
-        
+
         headers = {
             "x-api-key": ROBLOX_API_KEY,
             "content-type": "application/json"
@@ -228,7 +251,7 @@ class moderationGroup(app_commands.Group):
             "gameJoinRestriction": {
                 "active": True,
                 "duration": duration_string,
-                "privateReason": reason,
+                "privateReason": f"Banned by {interaction.user} ({interaction.user.id}): {reason}",
                 "displayReason": reason,
                 "excludeAltAccounts": False
             }
@@ -237,12 +260,12 @@ class moderationGroup(app_commands.Group):
         async with aiohttp.ClientSession() as session:
             async with session.patch(url, headers=headers, json=payload) as response:
                 if response.status == 200:
-                    await interaction.followup.send(f"✅ Successfully banned ID `{user_id}` for {time_minutes} minutes.")
+                    label = f"`{target}` (ID: `{user_id}`)" if not target.isdigit() else f"ID `{user_id}`"
+                    await interaction.followup.send(f"✅ Successfully banned {label} for {time_minutes} minutes.")
                 else:
                     error_text = await response.text()
                     await interaction.followup.send(f"❌ Failed to ban. Status: {response.status}\n`{error_text}`")
 
-# These lines at the end are correct
 mod_group = moderationGroup()
 client.tree.add_command(mod_group)
 
