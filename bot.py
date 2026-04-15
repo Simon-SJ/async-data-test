@@ -230,7 +230,7 @@ class robloxmoderationGroup(app_commands.Group):
                 return str(users[0]["id"]), None
 
     @app_commands.command(name="ban", description="Ban a Roblox user by ID or username")
-    async def ban(self, interaction: discord.Interaction, target: str, time_minutes: float, reason: str = "No reason provided"):
+    async def ban(self, interaction: discord.Interaction, target: str, time_minutes: float, reason: str):
         if not IsAdmin(interaction.user):
             await interaction.response.send_message("❌ No permission.", ephemeral=True)
             return
@@ -255,7 +255,7 @@ class robloxmoderationGroup(app_commands.Group):
                 "active": True,
                 "duration": duration_string,
                 "privateReason": f"Banned by {interaction.user} ({interaction.user.id}): {reason}",
-                "displayReason": reason,
+                "displayReason": "You have been banned.",
                 "excludeAltAccounts": False
             }
         }
@@ -293,10 +293,6 @@ class robloxmoderationGroup(app_commands.Group):
         payload = {
             "gameJoinRestriction": {
                 "active": False,
-                "duration": "67s",
-                "privateReason": f"Banned by {interaction.user} ({interaction.user.id}): unban",
-                "displayReason": "unban",
-                "excludeAltAccounts": False
             }
         }
 
