@@ -203,9 +203,9 @@ async def on_message(message):
     if f"<@{client.user.id}>" in message.content:
         await message.channel.send(random.choice(["hello", "hi", "What's up"]))
 
-class moderationGroup(app_commands.Group):
+class robloxmoderationGroup(app_commands.Group):
     def __init__(self):
-        super().__init__(name="moderation", description="for mods")
+        super().__init__(name="roblox", description="for mods")
 
     async def resolve_user_id(self, target: str) -> tuple[str | None, str | None]:
         """Returns (user_id, error_message). Accepts a numeric ID or a username."""
@@ -268,6 +268,53 @@ class moderationGroup(app_commands.Group):
                 else:
                     error_text = await response.text()
                     await interaction.followup.send(f"❌ Failed to ban. Status: {response.status}\n`{error_text}`")
+
+        
+    app_commands.command(name="unban", description="Unban a Roblox user by ID or username")
+    async def ban(self, interaction: discord.Interaction, target: str):
+        if not IsAdmin(interaction.user):
+            await interaction.response.send_message("❌ No permission.", ephemeral=True)
+            return
+
+        await interaction.response.defer()
+
+        user_id, error = await self.resolve_user_id(target)
+        if error:
+            await interaction.followup.send(f"❌ {error}")
+            return
+
+        url = f"https://apis.roblox.com/cloud/v2/universes/{UNIVERSE_ID}/user-restrictions/{user_id}"
+
+        headers = {
+            "x-api-key": ROBLOX_API_KEY,
+            "content-type": "application/json"
+        }
+
+        payload = {
+            "gameJoinRestriction": {
+                "active": False,
+                "duration": "0s",
+                "privateReason": f"Banned by {interaction.user} ({interaction.user.id}): unban",
+                "displayReason": "unban",
+                "excludeAltAccounts": False
+            }
+        }
+
+        async with aiohttp.ClientSession() as session:
+            async with session.patch(url, headers=headers, json=payload) as response:
+                if response.status == 200:
+                    label = f"`{target}` (ID: `{user_id}`)" if not target.isdigit() else f"ID `{user_id}`"
+                    await interaction.followup.send(f"✅ Successfully unbanned {label}.")
+                else:
+                    error_text = await response.text()
+                    await interaction.followup.send(f"❌ Failed to unban. Status: {response.status}\n`{error_text}`")
+
+roblox_mod_group = robloxmoderationGroup()
+client.tree.add_command(roblox_mod_group)
+
+class discordmoderationGroup(app_commands.Group):
+    def __init__(self):
+        super().__init__(name="discord", description="for mods")
 
     @app_commands.command(name="globalban", description="Ban a user from all servers the bot is in")
     @app_commands.describe(user="User ID to ban", reason="Reason for the ban")
@@ -347,7 +394,8 @@ class moderationGroup(app_commands.Group):
             lines.append(f"❌ Failed: {', '.join(failed)}")
 
         await interaction.followup.send("\n".join(lines))
-mod_group = moderationGroup()
+
+mod_group = discordmoderationGroup()
 client.tree.add_command(mod_group)
 
 
