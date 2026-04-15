@@ -271,7 +271,7 @@ class robloxmoderationGroup(app_commands.Group):
 
         
     @app_commands.command(name="unban", description="Unban a Roblox user by ID or username")
-    async def ban(self, interaction: discord.Interaction, target: str):
+    async def unban(self, interaction: discord.Interaction, target: str):
         if not IsAdmin(interaction.user):
             await interaction.response.send_message("❌ No permission.", ephemeral=True)
             return
