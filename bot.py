@@ -395,8 +395,8 @@ class discordmoderationGroup(app_commands.Group):
 
         await interaction.followup.send("\n".join(lines))
 
-mod_group = discordmoderationGroup()
-client.tree.add_command(mod_group)
+discord_mod_group = discordmoderationGroup()
+client.tree.add_command(discord_mod_group)
 
 
 client.run(TOKEN)
