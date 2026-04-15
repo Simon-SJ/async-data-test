@@ -293,7 +293,7 @@ class robloxmoderationGroup(app_commands.Group):
         payload = {
             "gameJoinRestriction": {
                 "active": False,
-                "duration": "0s",
+                "duration": "67s",
                 "privateReason": f"Banned by {interaction.user} ({interaction.user.id}): unban",
                 "displayReason": "unban",
                 "excludeAltAccounts": False
