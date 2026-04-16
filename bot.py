@@ -231,7 +231,7 @@ class robloxmoderationGroup(app_commands.Group):
 
     @app_commands.command(name="ban", description="Ban a Roblox user by ID or username")
     @app_commands.describe( target="The Roblox username or user ID to ban.", reason="The reason for the ban.",time_minutes="Duration of the ban in minutes. Leave empty for a permanent ban.")
-    async def ban(self, interaction: discord.Interaction, target: str, reason: str, time_minutes: float = None):
+    async def ban(self, interaction: discord.Interaction, target: str, reason: str, time_minutes = None):
         if not IsAdmin(interaction.user):
             await interaction.response.send_message("❌ No permission.", ephemeral=True)
             return
