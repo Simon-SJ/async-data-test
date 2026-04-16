@@ -5,6 +5,7 @@ import os
 import json
 import random
 import aiohttp
+from typing import Optional
 
 # --- CONFIG ---
 UNIVERSE_ID = 3467628732
@@ -231,7 +232,7 @@ class robloxmoderationGroup(app_commands.Group):
 
     @app_commands.command(name="ban", description="Ban a Roblox user by ID or username")
     @app_commands.describe( target="The Roblox username or user ID to ban.", reason="The reason for the ban.",time_minutes="Duration of the ban in minutes. Leave empty for a permanent ban.")
-    async def ban(self, interaction: discord.Interaction, target: str, reason: str, time_minutes = None):
+    async def ban(self, interaction: discord.Interaction, target: str, reason: str, time_minutes: Optional[float] = None):
         if not IsAdmin(interaction.user):
             await interaction.response.send_message("❌ No permission.", ephemeral=True)
             return
@@ -268,7 +269,12 @@ class robloxmoderationGroup(app_commands.Group):
             async with session.patch(url, headers=headers, json=payload) as response:
                 if response.status == 200:
                     label = f"`{target}` (ID: `{user_id}`)" if not target.isdigit() else f"ID `{user_id}`"
-                    await interaction.followup.send(f"✅ Successfully banned {label} for {time_minutes} minutes.")
+                    followUpMsg = f"✅ Successfully banned {label} for {time_minutes} minutes."
+
+                    if not time_minutes:
+                        followUpMsg = f"✅ Successfully banned {label} permanently."
+                        
+                    await interaction.followup.send(followUpMsg)
                 else:
                     error_text = await response.text()
                     await interaction.followup.send(f"❌ Failed to ban. Status: {response.status}\n`{error_text}`")
