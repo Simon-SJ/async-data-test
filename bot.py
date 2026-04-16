@@ -230,7 +230,8 @@ class robloxmoderationGroup(app_commands.Group):
                 return str(users[0]["id"]), None
 
     @app_commands.command(name="ban", description="Ban a Roblox user by ID or username")
-    async def ban(self, interaction: discord.Interaction, target: str, time_minutes: float, reason: str):
+    @app_commands.describe( target="The Roblox username or user ID to ban.", reason="The reason for the ban (shown internally to moderators).",time_minutes="Duration of the ban in minutes. Leave empty for a permanent ban.")
+    async def ban(self, interaction: discord.Interaction, target: str, reason: str, time_minutes: float = None):
         if not IsAdmin(interaction.user):
             await interaction.response.send_message("❌ No permission.", ephemeral=True)
             return
@@ -242,7 +243,10 @@ class robloxmoderationGroup(app_commands.Group):
             await interaction.followup.send(f"❌ {error}")
             return
 
-        duration_string = f"{time_minutes * 60}s"
+        duration_string = None
+        if time_minutes:
+            duration_string = f"{time_minutes * 60}s"
+
         url = f"https://apis.roblox.com/cloud/v2/universes/{UNIVERSE_ID}/user-restrictions/{user_id}"
 
         headers = {
