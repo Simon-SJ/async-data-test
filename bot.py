@@ -518,6 +518,17 @@ class EAmoderationGroup(app_commands.Group):
                     err_body = await response.text()
                     await interaction.followup.send(f"❌ Failed to unsuspend. Status: {response.status}\n`{err_body}`")
 
+    @app_commands.command(name="list", description="debug cmd, does not do shit")
+    async def list_suspended(self, interaction: discord.Interaction):
+        if not IsAdmin(interaction.user):
+            await interaction.response.send_message("❌ No permission.", ephemeral=True)
+            return
+
+        await interaction.response.defer(ephemeral=True)
+        entries = await self.get_entries()
+        print(entries)
+        await interaction.followup.send("Entries printed to console.")
+
 EA_mod_group = EAmoderationGroup()
 client.tree.add_command(EA_mod_group)
 
