@@ -503,22 +503,31 @@ class EAmoderationGroup(app_commands.Group):
             await interaction.followup.send(f"❌ {error}")
             return
 
-        entry_key = f"{user_id}"
-        url = f"{base_url}universes/{UNIVERSE_ID}/data-stores/{suspension_dataStore_ID}/entries/{entry_key}"
+        # Ensure the key matches the "suspend" command (no 'user_' prefix)
+        entry_key = str(user_id)
+        url = f"https://apis.roblox.com/datastores/v1/universes/{UNIVERSE_ID}/standard-datastores/datastore/entries/entry"
         
-        headers = {
-            "x-api-key": str(ROBLOX_API_KEY)
+        params = {
+            "datastoreName": suspension_dataStore_ID,
+            "entryKey": entry_key
         }
+        
+        headers = {"x-api-key": ROBLOX_API_KEY}
 
         async with aiohttp.ClientSession() as session:
-            async with session.delete(url, headers=headers) as response:
-                if response.status == 204:
+            async with session.delete(url, headers=headers, params=params) as response:
+                # Roblox v1 returns 200 when a key is successfully deleted
+                if response.status == 200:
                     await interaction.followup.send(f"✅ Successfully unsuspended `{target}` (ID: `{user_id}`).")
+                
+                # If it's already gone or never existed
                 elif response.status == 404:
                     await interaction.followup.send(f"ℹ️ User `{target}` is not currently suspended.")
+                
+                # Catch-all for actual errors (403, 500, etc.)
                 else:
                     err_body = await response.text()
-                    await interaction.followup.send(f"❌ Failed to unsuspend. Status: {response.status}\n`{err_body}`")
+                    await interaction.followup.send(f"❌ API Error. Status: {response.status}\n`{err_body}`")
 
     @app_commands.command(name="list", description="debug cmd, does not do shit")
     async def list_suspended(self, interaction: discord.Interaction):
