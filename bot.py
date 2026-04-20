@@ -445,10 +445,8 @@ class EAmoderationGroup(app_commands.Group):
     @app_commands.command(name="suspend", description="Suspend a user from EA")
     @app_commands.describe(
         target="Roblox Username or ID", 
-        time_minutes="Minutes until suspension expires (leave empty for perm)", 
-        reason="Why are they being suspended?"
     )
-    async def suspend(self, interaction: discord.Interaction, target: str, time_minutes: Optional[int] = None, reason: str = "No reason provided"):
+    async def suspend(self, interaction: discord.Interaction, target: str):
         if not IsAdmin(interaction.user):
             await interaction.response.send_message("❌ No permission.", ephemeral=True)
             return
@@ -460,33 +458,37 @@ class EAmoderationGroup(app_commands.Group):
             await interaction.followup.send(f"❌ {error}")
             return
 
-        suspension_data = {
-            "moderator_id": str(interaction.user.id),
-            "moderator_name": f'{interaction.user.display_name} ({interaction.user.name})',
-            "reason": reason,
-            "suspended_at": int(discord.utils.utcnow().timestamp()),
-            "expires_at": int(discord.utils.utcnow().timestamp() + (time_minutes * 60)) if time_minutes else "Permanent"
-        }
+        suspension_data = True
 
+        # entry_key should just be the user_id based on your logic
         entry_key = f"{user_id}"
-        url = f"{base_url}universes/{UNIVERSE_ID}/data-stores/{suspension_dataStore_ID}/entries/{entry_key}"
+        
+        # Using the standard DataStore API v1 URL for setting data
+        url = f"https://apis.roblox.com/datastores/v1/universes/{UNIVERSE_ID}/standard-datastores/datastore/entries/entry"
+        
+        params = {
+            "datastoreName": suspension_dataStore_ID,
+            "entryKey": entry_key
+        }
         
         headers = {
-            "x-api-key": str(ROBLOX_API_KEY),
+            "x-api-key": ROBLOX_API_KEY,
             "content-type": "application/json"
         }
         
-        payload = json.dumps({"value": suspension_data})
+        # Roblox v1 Set-Entry expects the JSON string of the data
+        payload = json.dumps(suspension_data)
 
         async with aiohttp.ClientSession() as session:
-            async with session.patch(url, headers=headers, data=payload) as response:
-                if response.status in [200, 201]:
-                    duration_text = f"{time_minutes}m" if time_minutes else "Permanent"
-                    await interaction.followup.send(f"✅ Successfully suspended Roblox ID `{user_id}` for `{duration_text}`.\n**Reason:** {reason}")
+            async with session.post(url, headers=headers, params=params, data=payload) as response:
+                if response.status == 200:
+                    duration_text = "Permanent"
+                    await interaction.followup.send(f"✅ Successfully suspended Roblox ID `{user_id}` Permanently.")
                 else:
                     err_body = await response.text()
                     await interaction.followup.send(f"❌ Failed to update Roblox DataStore. Status: {response.status}\n`{err_body}`")
 
+                
     @app_commands.command(name="unsuspend", description="Remove an EA suspension from a Roblox user")
     @app_commands.describe(target="Roblox Username or ID to unsuspend")
     async def unsuspend(self, interaction: discord.Interaction, target: str):
