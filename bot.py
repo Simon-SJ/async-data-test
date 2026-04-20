@@ -5,7 +5,7 @@ import os
 import json
 import random
 import aiohttp
-from typing import Optional
+from typing import Optional, Literal
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -96,6 +96,25 @@ def sync_and_publish(manual_override=None, names_override=None):
     push_all_to_gist(final_output, manual_list, name_overrides, moderators)
     return len(final_output)
 
+def clear_external_bridge():
+    """Wipes the ExternalBridge.json file to an empty list."""
+    url = f"https://api.github.com/gists/{GIST_ID}"
+    headers = {"Authorization": f"token {GITHUB_TOKEN}"}
+    
+    payload = {
+        "files": {
+            "ExternalBridge.json": {"content": json.dumps([], indent=2)}
+        }
+    }
+    try:
+        r = requests.patch(url, headers=headers, json=payload)
+        if r.status_code == 200:
+            print("Successfully cleared ExternalBridge.json queue.")
+        else:
+            print(f"Failed to clear queue: {r.status_code}")
+    except Exception as e:
+        print(f"Error clearing queue on startup: {e}")
+
 # --- SLASH COMMANDS ---
 class UserGroup(app_commands.Group):
     def __init__(self):
@@ -184,6 +203,7 @@ client.tree.add_command(user_group)
 @client.event
 async def on_ready():
     print(f'Logged in as {client.user}. Initial Sync...')
+    clear_external_bridge()
     count = sync_and_publish()
     print(f"Sync complete. {count} total users in list.")
 
@@ -543,5 +563,63 @@ class EAmoderationGroup(app_commands.Group):
 EA_mod_group = EAmoderationGroup()
 client.tree.add_command(EA_mod_group)
 
+
+def add_command_to_queue(new_command):
+    """Fetches the current queue, adds a new command, and pushes back to Gist."""
+    url = f"https://api.github.com/gists/{GIST_ID}"
+    headers = {"Authorization": f"token {GITHUB_TOKEN}"}
+    
+    # 1. Get current queue
+    current_queue = get_gist_file("ExternalBridge.json")
+    if not isinstance(current_queue, list):
+        current_queue = []
+    
+    # 2. Append new command
+    current_queue.append(new_command)
+    
+    # 3. Patch Gist (Keep other files intact by only updating this one)
+    payload = {
+        "files": {
+            "ExternalBridge.json": {"content": json.dumps(current_queue, indent=2)}
+        }
+    }
+    requests.patch(url, headers=headers, json=payload)
+
+# --- MOON COMMAND GROUP ---
+
+class MoonControlGroup(app_commands.Group):
+    def __init__(self):
+        super().__init__(name="moon", description="Control the game atmosphere")
+
+    @app_commands.command(name="set", description="Trigger a blackout or change the moon style")
+    async def set_moon(
+        self, 
+        interaction: discord.Interaction, 
+        enabled: bool, 
+        style: Literal['blood', 'fun', 'hallow', 'no']
+    ):
+        if not IsAdmin(interaction.user):
+            await interaction.response.send_message("❌ No permission.", ephemeral=True)
+            return
+
+        await interaction.response.defer()
+
+        new_command = {
+            "bool": enabled,
+            "style": style,
+            "timestamp": discord.utils.utcnow().timestamp() # Helps Roblox know it's new
+        }
+
+        try:
+            # We use a thread for the gist update so we don't block the bot
+            add_command_to_queue(new_command)
+            status_text = "ENABLED" if enabled else "DISABLED"
+            await interaction.followup.send(f"✅ **{style.upper()}** moon set to **{status_text}**. Pushed to Gist.")
+        except Exception as e:
+            await interaction.followup.send(f"❌ Gist update failed: {e}")
+
+# Register it near your other groups
+moon_group = MoonControlGroup()
+client.tree.add_command(moon_group)
 
 client.run(TOKEN)
