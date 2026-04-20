@@ -503,7 +503,7 @@ class EAmoderationGroup(app_commands.Group):
             await interaction.followup.send(f"❌ {error}")
             return
 
-        entry_key = f"user_{user_id}"
+        entry_key = f"{user_id}"
         url = f"{base_url}universes/{UNIVERSE_ID}/data-stores/{suspension_dataStore_ID}/entries/{entry_key}"
         
         headers = {
