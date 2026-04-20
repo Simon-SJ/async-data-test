@@ -12,7 +12,6 @@ load_dotenv()
 
 # --- CONFIG ---
 UNIVERSE_ID = 3467628732
-GAME_ID = 9256427353
 ROBLOX_API_KEY = os.getenv("ROBLOX_API_KEY")
 TOKEN = os.getenv("DISCORD_TOKEN")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
@@ -470,7 +469,7 @@ class EAmoderationGroup(app_commands.Group):
         }
 
         entry_key = f"{user_id}"
-        url = f"{base_url}universes/{GAME_ID}/data-stores/{suspension_dataStore_ID}/entries/{entry_key}"
+        url = f"{base_url}universes/{UNIVERSE_ID}/data-stores/{suspension_dataStore_ID}/entries/{entry_key}"
         
         headers = {
             "x-api-key": str(ROBLOX_API_KEY),
@@ -503,7 +502,7 @@ class EAmoderationGroup(app_commands.Group):
             return
 
         entry_key = f"user_{user_id}"
-        url = f"{base_url}universes/{GAME_ID}/data-stores/{suspension_dataStore_ID}/entries/{entry_key}"
+        url = f"{base_url}universes/{UNIVERSE_ID}/data-stores/{suspension_dataStore_ID}/entries/{entry_key}"
         
         headers = {
             "x-api-key": str(ROBLOX_API_KEY)
