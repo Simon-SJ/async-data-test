@@ -586,17 +586,19 @@ def add_command_to_queue(new_command):
     requests.patch(url, headers=headers, json=payload)
 
 # --- MOON COMMAND GROUP ---
-
+'''
 class MoonControlGroup(app_commands.Group):
     def __init__(self):
         super().__init__(name="moon", description="Control the game atmosphere")
 
-    @app_commands.command(name="set", description="Trigger a blackout or change the moon style")
+    @app_commands.command(name="set", description="Trigger a blackout or change the moon style with a delay")
+    @app_commands.describe(delay="Set a delay in seconds before the moon triggers")
     async def set_moon(
         self, 
         interaction: discord.Interaction, 
         enabled: bool, 
-        style: Literal['blood', 'fun', 'hallow', 'no']
+        style: Literal['blood', 'fun', 'hallow', 'blackout'],
+        delay: int,
     ):
         if not IsAdmin(interaction.user):
             await interaction.response.send_message("❌ No permission.", ephemeral=True)
@@ -607,6 +609,7 @@ class MoonControlGroup(app_commands.Group):
         new_command = {
             "bool": enabled,
             "style": style,
+            "delay": delay,
             "timestamp": discord.utils.utcnow().timestamp() # Helps Roblox know it's new
         }
 
@@ -614,12 +617,13 @@ class MoonControlGroup(app_commands.Group):
             # We use a thread for the gist update so we don't block the bot
             add_command_to_queue(new_command)
             status_text = "ENABLED" if enabled else "DISABLED"
-            await interaction.followup.send(f"✅ **{style.upper()}** moon set to **{status_text}**. Pushed to Gist.")
+            await interaction.followup.send(f"✅ **{style.upper()}** moon set to **{status_text}** in **{delay} seconds**. Pushed to Gist.")
         except Exception as e:
             await interaction.followup.send(f"❌ Gist update failed: {e}")
 
 # Register it near your other groups
 moon_group = MoonControlGroup()
 client.tree.add_command(moon_group)
+'''
 
 client.run(TOKEN)
