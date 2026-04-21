@@ -563,7 +563,7 @@ class EAmoderationGroup(app_commands.Group):
 EA_mod_group = EAmoderationGroup()
 client.tree.add_command(EA_mod_group)
 
-
+'''
 def add_command_to_queue(new_command):
     """Fetches the current queue, adds a new command, and pushes back to Gist."""
     url = f"https://api.github.com/gists/{GIST_ID}"
@@ -586,7 +586,7 @@ def add_command_to_queue(new_command):
     requests.patch(url, headers=headers, json=payload)
 
 # --- MOON COMMAND GROUP ---
-'''
+
 class MoonControlGroup(app_commands.Group):
     def __init__(self):
         super().__init__(name="moon", description="Control the game atmosphere")
