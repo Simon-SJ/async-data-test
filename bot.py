@@ -37,6 +37,22 @@ client = MyClient()
 
 # --- HELPER FUNCTIONS ---
 
+async def log_action(title: str, description: str, color: discord.Color = discord.Color.blue()):
+        #Sends an embed log to the designated logging channel.
+        LOG_CHANNEL_ID = 1496863034818433096
+        channel = client.get_channel(LOG_CHANNEL_ID)
+        
+        if channel:
+            embed = discord.Embed(
+                title=title,
+                description=description,
+                color=color,
+                timestamp=discord.utils.utcnow()
+            )
+            await channel.send(embed=embed)
+        else:
+            print(f"Could not find log channel with ID {LOG_CHANNEL_ID}")
+
 def IsAdmin(user):
     if user.id in ADMIN_IDs:
         return True
@@ -298,7 +314,23 @@ class robloxmoderationGroup(app_commands.Group):
 
                     if not time_minutes:
                         followUpMsg = f"✅ Successfully banned {label} permanently."
-                        
+
+                    logTime = f"{time_minutes} minutes"
+
+                    if not time_minutes:
+                        logTime = "Permanently"
+
+                    await log_action(
+                        title="🔨 Roblox User Banned",
+                        description=(
+                            f"**Target:** {label}\n"
+                            f"**Moderator:** {interaction.user.mention}\n"
+                            f"**Duration:** {logTime}\n"
+                            f"**Reason:** {reason}"
+                        ),
+                        color=discord.Color.red()
+                    )
+
                     await interaction.followup.send(followUpMsg)
                 else:
                     error_text = await response.text()
