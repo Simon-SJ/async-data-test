@@ -367,6 +367,16 @@ class robloxmoderationGroup(app_commands.Group):
             async with session.patch(url, headers=headers, json=payload) as response:
                 if response.status == 200:
                     label = f"`{target}` (ID: `{user_id}`)" if not target.isdigit() else f"ID `{user_id}`"
+
+                    await log_action(
+                        title="🔨 Roblox User Unbanned",
+                        description=(
+                            f"**Target:** {label}\n"
+                            f"**Moderator:** {interaction.user.mention}\n"
+                        ),
+                        color=discord.Color.green()
+                    )
+                    
                     await interaction.followup.send(f"✅ Successfully unbanned {label}.")
                 else:
                     error_text = await response.text()
