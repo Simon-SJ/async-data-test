@@ -605,7 +605,7 @@ class EAmoderationGroup(app_commands.Group):
 EA_mod_group = EAmoderationGroup()
 client.tree.add_command(EA_mod_group)
 
-'''
+
 def add_command_to_queue(new_command):
     """Fetches the current queue, adds a new command, and pushes back to Gist."""
     url = f"https://api.github.com/gists/{GIST_ID}"
@@ -634,13 +634,14 @@ class MoonControlGroup(app_commands.Group):
         super().__init__(name="moon", description="Control the game atmosphere")
 
     @app_commands.command(name="set", description="Trigger a blackout or change the moon style with a delay")
-    @app_commands.describe(delay="Set a delay in seconds before the moon triggers")
+    @app_commands.describe(delay="Set a delay in seconds before the moon triggers", debug="Makes the command only trigger in private servers and studio")
     async def set_moon(
         self, 
         interaction: discord.Interaction, 
         enabled: bool, 
         style: Literal['blood', 'fun', 'hallow', 'blackout'],
         delay: int,
+        debug: bool,
     ):
         if not IsAdmin(interaction.user):
             await interaction.response.send_message("❌ No permission.", ephemeral=True)
@@ -652,7 +653,8 @@ class MoonControlGroup(app_commands.Group):
             "bool": enabled,
             "style": style,
             "delay": delay,
-            "timestamp": discord.utils.utcnow().timestamp() # Helps Roblox know it's new
+            "timestamp": discord.utils.utcnow().timestamp(),
+            "debug": debug
         }
 
         try:
@@ -666,6 +668,6 @@ class MoonControlGroup(app_commands.Group):
 # Register it near your other groups
 moon_group = MoonControlGroup()
 client.tree.add_command(moon_group)
-'''
+
 
 client.run(TOKEN)
