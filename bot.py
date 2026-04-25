@@ -570,7 +570,7 @@ class EAmoderationGroup(app_commands.Group):
 
         async with aiohttp.ClientSession() as session:
             async with session.delete(url, headers=headers, params=params) as response:
-                if response.status == 200:
+                if response.status in (200, 204):
                     await interaction.followup.send(f"✅ Successfully unsuspended `{target}` (ID: `{user_id}`).")
                 elif response.status == 404:
                     await interaction.followup.send(f"ℹ️ User `{target}` is not currently suspended.")
