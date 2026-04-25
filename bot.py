@@ -18,6 +18,7 @@ GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 GIST_ID = os.getenv("GIST_ID")
 ADMIN_IDs = {595524051208765442, 554691397601591306 , 781870312194703380, 465161449359147010 }
 MODERATOR_ROLE_IDS = {1271205269183139891, 1091729426850521105, 1271208960463999079, 1145150303210049576, 1411096066602045533, 1271202265688051722}
+EA_SUSPENSION_ROLE_IDS = {1270993277834760243, 1270998010502844449}
 suspension_dataStore_ID = 'SuspendedEA'
 base_url = 'https://apis.roblox.com/cloud/v2/'
 
@@ -52,6 +53,13 @@ async def log_action(title: str, description: str, color: discord.Color = discor
             await channel.send(embed=embed)
         else:
             print(f"Could not find log channel with ID {LOG_CHANNEL_ID}")
+
+def IsEASuspensionMod(user):
+    if user.id in ADMIN_IDs:
+        return True
+    if any(role.id in EA_SUSPENSION_ROLE_IDS for role in user.roles):
+        return True
+    return False
 
 def IsAdmin(user):
     if user.id in ADMIN_IDs:
@@ -486,30 +494,27 @@ class EAmoderationGroup(app_commands.Group):
             async with session.post(url, json=payload) as response:
                 if response.status != 200:
                     return None, f"Failed to contact Roblox API. Status: {response.status}"
-                
                 data = await response.json()
                 users = data.get("data", [])
                 if not users:
                     return None, f"No Roblox user found with username `{target}`."
-
                 return str(users[0]["id"]), None
 
-    # Note: Use aiohttp here instead of requests to prevent blocking
     async def get_entries(self):
         list_path = f'universes/{UNIVERSE_ID}/data-stores/{suspension_dataStore_ID}/entries'
         url = base_url + list_path
         headers = {'x-api-key': ROBLOX_API_KEY}
-        
         async with aiohttp.ClientSession() as session:
             async with session.get(url, headers=headers) as response:
                 return await response.json()
 
     @app_commands.command(name="suspend", description="Suspend a user from EA")
     @app_commands.describe(
-        target="Roblox Username or ID", 
+        target="Roblox Username or ID",
+        duration_days="How many days to suspend (leave empty for permanent)"
     )
-    async def suspend(self, interaction: discord.Interaction, target: str):
-        if not IsAdmin(interaction.user):
+    async def suspend(self, interaction: discord.Interaction, target: str, duration_days: Optional[int] = None):
+        if not IsEASuspensionMod(interaction.user):
             await interaction.response.send_message("❌ No permission.", ephemeral=True)
             return
 
@@ -520,41 +525,31 @@ class EAmoderationGroup(app_commands.Group):
             await interaction.followup.send(f"❌ {error}")
             return
 
-        suspension_data = True
+        import time
+        suspension_data = {
+            "suspended": True,
+            "expires_at": int(time.time()) + (duration_days * 86400) if duration_days else None,
+            "duration_days": duration_days
+        }
 
-        # entry_key should just be the user_id based on your logic
-        entry_key = f"{user_id}"
-        
-        # Using the standard DataStore API v1 URL for setting data
+        entry_key = str(user_id)
         url = f"https://apis.roblox.com/datastores/v1/universes/{UNIVERSE_ID}/standard-datastores/datastore/entries/entry"
-        
-        params = {
-            "datastoreName": suspension_dataStore_ID,
-            "entryKey": entry_key
-        }
-        
-        headers = {
-            "x-api-key": ROBLOX_API_KEY,
-            "content-type": "application/json"
-        }
-        
-        # Roblox v1 Set-Entry expects the JSON string of the data
-        payload = json.dumps(suspension_data)
+        params = {"datastoreName": suspension_dataStore_ID, "entryKey": entry_key}
+        headers = {"x-api-key": ROBLOX_API_KEY, "content-type": "application/json"}
 
         async with aiohttp.ClientSession() as session:
-            async with session.post(url, headers=headers, params=params, data=payload) as response:
+            async with session.post(url, headers=headers, params=params, data=json.dumps(suspension_data)) as response:
                 if response.status == 200:
-                    duration_text = "Permanent"
-                    await interaction.followup.send(f"✅ Successfully suspended Roblox ID `{user_id}` Permanently.")
+                    duration_text = f"**{duration_days} day(s)**" if duration_days else "**permanently**"
+                    await interaction.followup.send(f"✅ Successfully suspended `{target}` (ID: `{user_id}`) {duration_text}.")
                 else:
                     err_body = await response.text()
                     await interaction.followup.send(f"❌ Failed to update Roblox DataStore. Status: {response.status}\n`{err_body}`")
 
-                
     @app_commands.command(name="unsuspend", description="Remove an EA suspension from a Roblox user")
     @app_commands.describe(target="Roblox Username or ID to unsuspend")
     async def unsuspend(self, interaction: discord.Interaction, target: str):
-        if not IsAdmin(interaction.user):
+        if not IsEASuspensionMod(interaction.user):
             await interaction.response.send_message("❌ No permission.", ephemeral=True)
             return
 
@@ -565,28 +560,20 @@ class EAmoderationGroup(app_commands.Group):
             await interaction.followup.send(f"❌ {error}")
             return
 
-        # Ensure the key matches the "suspend" command (no 'user_' prefix)
         entry_key = str(user_id)
         url = f"https://apis.roblox.com/datastores/v1/universes/{UNIVERSE_ID}/standard-datastores/datastore/entries/entry"
-        
         params = {
             "datastoreName": suspension_dataStore_ID,
             "entryKey": entry_key
         }
-        
         headers = {"x-api-key": ROBLOX_API_KEY}
 
         async with aiohttp.ClientSession() as session:
             async with session.delete(url, headers=headers, params=params) as response:
-                # Roblox v1 returns 200 when a key is successfully deleted
                 if response.status == 200:
                     await interaction.followup.send(f"✅ Successfully unsuspended `{target}` (ID: `{user_id}`).")
-                
-                # If it's already gone or never existed
                 elif response.status == 404:
                     await interaction.followup.send(f"ℹ️ User `{target}` is not currently suspended.")
-                
-                # Catch-all for actual errors (403, 500, etc.)
                 else:
                     err_body = await response.text()
                     await interaction.followup.send(f"❌ API Error. Status: {response.status}\n`{err_body}`")
