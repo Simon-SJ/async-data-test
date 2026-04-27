@@ -19,6 +19,8 @@ GIST_ID = os.getenv("GIST_ID")
 ADMIN_IDs = {595524051208765442, 554691397601591306 , 781870312194703380, 465161449359147010 }
 MODERATOR_ROLE_IDS = {1271205269183139891, 1091729426850521105, 1271208960463999079, 1145150303210049576, 1411096066602045533, 1271202265688051722}
 EA_SUSPENSION_ROLE_IDS = {1270993277834760243, 1270998010502844449}
+EA_SUSPENDED_ROLE_ID = 1417249050616664094
+EA_SUSPENSION_GUILD_ID = 1270991212811391060
 suspension_dataStore_ID = 'SuspendedEA'
 base_url = 'https://apis.roblox.com/cloud/v2/'
 
@@ -513,7 +515,7 @@ class EAmoderationGroup(app_commands.Group):
         target="Roblox Username or ID",
         duration_days="How many days to suspend (leave empty for permanent)"
     )
-    async def suspend(self, interaction: discord.Interaction, target: str, duration_days: Optional[int] = None):
+    async def suspend(self, interaction: discord.Interaction, discord_account: discord.User, target: str, duration_days: Optional[int] = None):
         if not IsEASuspensionMod(interaction.user):
             await interaction.response.send_message("❌ No permission.", ephemeral=True)
             return
@@ -541,14 +543,33 @@ class EAmoderationGroup(app_commands.Group):
             async with session.post(url, headers=headers, params=params, data=json.dumps(suspension_data)) as response:
                 if response.status == 200:
                     duration_text = f"**{duration_days} day(s)**" if duration_days else "**permanently**"
-                    await interaction.followup.send(f"✅ Successfully suspended `{target}` (ID: `{user_id}`) {duration_text}.")
+
+                    role_guild = client.get_guild(EA_SUSPENSION_GUILD_ID)
+                    if not role_guild:
+                        await interaction.followup.send(f"⚠️ Suspended in DataStore but couldn't find the suspension guild.")
+                        return
+
+                    member = role_guild.get_member(discord_account.id)
+                    if not member:
+                        await interaction.followup.send(f"⚠️ Suspended in DataStore but `{discord_account}` is not in the suspension server.")
+                        return
+
+                    role = role_guild.get_role(EA_SUSPENDED_ROLE_ID)
+                    if role:
+                        try:
+                            await member.add_roles(role, reason=f"EA suspended by {interaction.user}")
+                        except discord.Forbidden:
+                            await interaction.followup.send(f"⚠️ Suspended in DataStore but couldn't assign role (missing permissions).")
+                            return
+
+                    await interaction.followup.send(f"✅ Successfully suspended `{target}` (ID: `{user_id}`) {duration_text} and assigned suspended role to {discord_account.mention}.")
                 else:
                     err_body = await response.text()
                     await interaction.followup.send(f"❌ Failed to update Roblox DataStore. Status: {response.status}\n`{err_body}`")
 
     @app_commands.command(name="unsuspend", description="Remove an EA suspension from a Roblox user")
     @app_commands.describe(target="Roblox Username or ID to unsuspend")
-    async def unsuspend(self, interaction: discord.Interaction, target: str):
+    async def unsuspend(self, interaction: discord.Interaction, discord_account: discord.User, target: str):
         if not IsEASuspensionMod(interaction.user):
             await interaction.response.send_message("❌ No permission.", ephemeral=True)
             return
@@ -571,7 +592,18 @@ class EAmoderationGroup(app_commands.Group):
         async with aiohttp.ClientSession() as session:
             async with session.delete(url, headers=headers, params=params) as response:
                 if response.status in (200, 204):
-                    await interaction.followup.send(f"✅ Successfully unsuspended `{target}` (ID: `{user_id}`).")
+                    role_guild = client.get_guild(EA_SUSPENSION_GUILD_ID)
+                    if role_guild:
+                        member = role_guild.get_member(discord_account.id)
+                        role = role_guild.get_role(EA_SUSPENDED_ROLE_ID)
+                        if member and role and role in member.roles:
+                            try:
+                                await member.remove_roles(role, reason=f"EA unsuspended by {interaction.user}")
+                            except discord.Forbidden:
+                                await interaction.followup.send(f"⚠️ Unsuspended in DataStore but couldn't remove role (missing permissions).")
+                                return
+
+                    await interaction.followup.send(f"✅ Successfully unsuspended `{target}` (ID: `{user_id}`) and removed suspended role from {discord_account.mention}.")
                 elif response.status == 404:
                     await interaction.followup.send(f"ℹ️ User `{target}` is not currently suspended.")
                 else:
