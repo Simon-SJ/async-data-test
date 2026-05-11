@@ -4,3 +4,4 @@ asyncio
 aiohttp
 dotenv
 google
+google-genai
