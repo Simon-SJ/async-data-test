@@ -9,6 +9,7 @@ from typing import Optional, Literal
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
+import time
 
 load_dotenv()
 
@@ -27,6 +28,8 @@ EA_SUSPENSION_GUILD_ID = 1270991212811391060
 suspension_dataStore_ID = 'SuspendedEA'
 blacklist_dataStore_ID = 'EntityBlacklists'
 base_url = 'https://apis.roblox.com/cloud/v2/'
+SYSTEM_INSTRUCTION_URL = "https://gist.githubusercontent.com/Simon-SJ/6d84b4acba40437f487e13c25ba7be4a/raw"
+ALLOWED_GUILD_ID = 1270991212811391060
 
 class MyClient(discord.Client):
     def __init__(self):
@@ -45,13 +48,33 @@ client = MyClient()
 # --- HELPER FUNCTIONS ---
 
 async def prompt_gemini(contents: str, model: str = "gemini-3.1-flash-lite"):
-    client = genai.Client()
-    response = client.models.generate_content(
+    gen_client = genai.Client(api_key=GEMINI_API_KEY)
+    
+    # Add a timestamp to the URL to bypass GitHub's cache (?t=123456789)
+    cache_buster = f"?t={int(time.time())}"
+    fresh_url = SYSTEM_INSTRUCTION_URL + cache_buster
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(fresh_url) as resp:
+                if resp.status == 200:
+                    fetched_instruction = await resp.text()
+                else:
+                    fetched_instruction = "You are a helpful assistant." 
+    except Exception as e:
+        print(f"Error fetching system instructions: {e}")
+        fetched_instruction = "You are a helpful assistant."
+
+    # 2. Generate content using the fetched instructions
+    response = gen_client.models.generate_content(
         model=model, 
         contents=contents,
         config=types.GenerateContentConfig(
-        thinking_config=types.ThinkingConfig(thinking_level="low"),
-        system_instruction="You are a discord bot with the id <@1468279695547044038>. Your name is Gal56890. You are a moderator for a Backrooms game on roblox"
+            thinking_config=types.ThinkingConfig(thinking_level="low"),
+            system_instruction=fetched_instruction,
+            # Adjusting thinking_config based on the model capabilities
+            # Note: gemini-3.1-flash-lite was likely a typo in your original; 
+            # common models are gemini-2.0-flash or gemini-1.5-flash.
         ),
     )
     return response.text
@@ -270,6 +293,9 @@ async def on_message(message):
             await DmChannel.send(f"{message.content} from {message.author}")
 
     if f"<@{client.user.id}>" in message.content:
+        if message.guild.id != ALLOWED_GUILD_ID:
+            return
+
         print(message.content)
         tt = await prompt_gemini(message.content) 
         print(tt)
@@ -835,5 +861,74 @@ class MoonControlGroup(app_commands.Group):
 moon_group = MoonControlGroup()
 client.tree.add_command(moon_group)
 
+class SettingsGroup(app_commands.Group):
+    def __init__(self):
+        super().__init__(name="settings", description="AI configuration settings")
+
+    @app_commands.command(name="get_instructions", description="View current Gemini system instructions from the Gist")
+    async def get_instructions(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+
+        if not IsAdmin(interaction.user):
+            await interaction.response.send_message("No permission.", ephemeral=True)
+            return
+
+        
+        # Use aiohttp for the GET request to keep it async
+        async with aiohttp.ClientSession() as session:
+            async with session.get(SYSTEM_INSTRUCTION_URL) as resp:
+                if resp.status == 200:
+                    text = await resp.text()
+                    # Discord has a 2000 character limit per message
+                    if len(text) > 1900:
+                        text = text[:1900] + "... (truncated)"
+                    await interaction.followup.send(f"**Current System Instructions:**\n```\n{text}\n```")
+                else:
+                    await interaction.followup.send(f"Failed to fetch Gist. Status: {resp.status}")
+
+    @app_commands.command(name="set_instructions", description="Update the Gemini system instructions in the Gist")
+    @app_commands.describe(new_text="The new system instruction text")
+    async def set_instructions(self, interaction: discord.Interaction, new_text: str):
+        # 1. STOP THE CLOCK IMMEDIATELY
+        await interaction.response.defer(ephemeral=True)
+
+        # 2. PERMISSION CHECK
+        if not IsAdmin(interaction.user):
+            await interaction.followup.send("No permission.")
+            return
+
+        # 3. GITHUB UPDATE LOGIC
+        # Note: FILENAME must match the file in your Gist (e.g., 'instructions.txt')
+        FILENAME = "instructions.txt" 
+        url = f"https://api.github.com/gists/{GIST_ID}"
+        headers = {
+            "Authorization": f"token {GITHUB_TOKEN}",
+            "Accept": "application/vnd.github.v3+json"
+        }
+        payload = {
+            "files": {
+                FILENAME: {"content": new_text}
+            }
+        }
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.patch(url, headers=headers, json=payload) as resp:
+                    if resp.status == 200:
+                        await interaction.followup.send("✅ System instructions updated successfully!")
+                        await log_action(
+                            title="⚙️ AI Instructions Updated",
+                            description=f"**Moderator:** {interaction.user.mention}\n**New Text Preview:** {new_text[:500]}...",
+                            color=discord.Color.purple()
+                        )
+                    else:
+                        err_data = await resp.text()
+                        await interaction.followup.send(f"❌ GitHub API Error ({resp.status}). check your Token/Gist ID.")
+        except Exception as e:
+            await interaction.followup.send(f"❌ A Python error occurred: {e}")
+
+# Register the new group
+settings_group = SettingsGroup()
+client.tree.add_command(settings_group)
 
 client.run(TOKEN)
