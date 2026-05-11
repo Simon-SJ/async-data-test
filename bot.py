@@ -28,7 +28,7 @@ EA_SUSPENSION_GUILD_ID = 1270991212811391060
 suspension_dataStore_ID = 'SuspendedEA'
 blacklist_dataStore_ID = 'EntityBlacklists'
 base_url = 'https://apis.roblox.com/cloud/v2/'
-SYSTEM_INSTRUCTION_URL = "https://gist.githubusercontent.com/Simon-SJ/6d84b4acba40437f487e13c25ba7be4a/raw"
+SYSTEM_INSTRUCTION_URL = "https://gist.githubusercontent.com/Simon-SJ/6b68ccd9b76b9287d8df562d24d8a1a9/raw/instructions.txt"
 ALLOWED_GUILD_ID = 1270991212811391060
 
 class MyClient(discord.Client):
@@ -64,6 +64,7 @@ async def prompt_gemini(contents: str, model: str = "gemini-3.1-flash-lite"):
     except Exception as e:
         print(f"Error fetching system instructions: {e}")
         fetched_instruction = "You are a helpful assistant."
+
 
     # 2. Generate content using the fetched instructions
     response = gen_client.models.generate_content(
@@ -296,9 +297,7 @@ async def on_message(message):
         if message.guild.id != ALLOWED_GUILD_ID:
             return
 
-        print(message.content)
         tt = await prompt_gemini(message.content) 
-        print(tt)
         await message.channel.send(tt)
 
 class robloxmoderationGroup(app_commands.Group):
