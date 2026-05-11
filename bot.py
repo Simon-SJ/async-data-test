@@ -7,6 +7,8 @@ import random
 import aiohttp
 from typing import Optional, Literal
 from dotenv import load_dotenv
+from google import genai
+from google.genai import types
 
 load_dotenv()
 
@@ -16,13 +18,14 @@ ROBLOX_API_KEY = os.getenv("ROBLOX_API_KEY")
 TOKEN = os.getenv("DISCORD_TOKEN")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 GIST_ID = os.getenv("GIST_ID")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 ADMIN_IDs = {595524051208765442, 554691397601591306 , 781870312194703380, 465161449359147010 }
 MODERATOR_ROLE_IDS = {1271205269183139891, 1091729426850521105, 1271208960463999079, 1145150303210049576, 1411096066602045533, 1271202265688051722}
 EA_SUSPENSION_ROLE_IDS = {1270993277834760243, 1270998010502844449}
 EA_SUSPENDED_ROLE_ID = 1417249050616664094
 EA_SUSPENSION_GUILD_ID = 1270991212811391060
 suspension_dataStore_ID = 'SuspendedEA'
-blacklist_dataStore_ID = 'blacklistedEA'
+blacklist_dataStore_ID = 'EntityBlacklists'
 base_url = 'https://apis.roblox.com/cloud/v2/'
 
 class MyClient(discord.Client):
@@ -40,6 +43,19 @@ class MyClient(discord.Client):
 client = MyClient()
 
 # --- HELPER FUNCTIONS ---
+
+async def prompt_gemini(contents: str, model: str = "gemini-3.1-flash-lite"):
+    client = genai.Client()
+    response = client.models.generate_content(
+        model=model, 
+        contents=contents,
+        config=types.GenerateContentConfig(
+        thinking_config=types.ThinkingConfig(thinking_level="low"),
+        system_instruction="You are a discord bot with the id <@1468279695547044038>. Your name is Gal56890. You are a moderator for a Backrooms game on roblox"
+        ),
+    )
+    return response.text
+
 
 async def log_action(title: str, description: str, color: discord.Color = discord.Color.blue()):
         #Sends an embed log to the designated logging channel.
@@ -254,7 +270,10 @@ async def on_message(message):
             await DmChannel.send(f"{message.content} from {message.author}")
 
     if f"<@{client.user.id}>" in message.content:
-        await message.channel.send(random.choice(["hello", "hi", "What's up"]))
+        print(message.content)
+        tt = await prompt_gemini(message.content) 
+        print(tt)
+        await message.channel.send(tt)
 
 class robloxmoderationGroup(app_commands.Group):
     def __init__(self):
@@ -647,15 +666,15 @@ class EAmoderationGroup(app_commands.Group):
                         current_data = {}
             
             # Ensure structure: {"entities": {"EntityName": timestamp}}
-            if "entities" not in current_data or not isinstance(current_data["entities"], dict):
-                current_data["entities"] = {}
+            if not current_data:
+                current_data = {}
 
             # 2. Update the entities
             entity_list = [e.strip() for e in entities.split(",")]
             expiry = int(time.time()) + (duration_days * 86400) if duration_days else None
             
             for entity in entity_list:
-                current_data["entities"][entity] = expiry
+                current_data[entity] = expiry
 
             # 3. Push updated data back to Roblox
             async with session.post(url, headers=headers, params=params, data=json.dumps(current_data)) as post_resp:
