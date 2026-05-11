@@ -22,6 +22,7 @@ EA_SUSPENSION_ROLE_IDS = {1270993277834760243, 1270998010502844449}
 EA_SUSPENDED_ROLE_ID = 1417249050616664094
 EA_SUSPENSION_GUILD_ID = 1270991212811391060
 suspension_dataStore_ID = 'SuspendedEA'
+blacklist_dataStore_ID = 'blacklistedEA'
 base_url = 'https://apis.roblox.com/cloud/v2/'
 
 class MyClient(discord.Client):
@@ -149,7 +150,7 @@ class UserGroup(app_commands.Group):
     @app_commands.command(name="add", description="Add a user to the manual list")
     async def add(self, interaction: discord.Interaction, member: discord.Member, roblox_name: str):
         if not IsAdmin(interaction.user):
-            await interaction.response.send_message("❌ No permission.", ephemeral=True)
+            await interaction.response.send_message("No permission.", ephemeral=True)
             return
 
         await interaction.response.defer()
@@ -169,12 +170,12 @@ class UserGroup(app_commands.Group):
             manual_data.append([user_id_str, display_name])
 
         count = sync_and_publish(manual_override=manual_data, names_override=name_overrides)
-        await interaction.followup.send(f"✅ Added **{member.name}** as '{display_name}'. Total: {count}")
+        await interaction.followup.send(f"Added **{member.name}** as '{display_name}'. Total: {count}")
 
     @app_commands.command(name="update", description="Update a user's Roblox name")
     async def update(self, interaction: discord.Interaction, member: discord.Member, roblox_name: str):
         if not IsAdmin(interaction.user):
-            await interaction.response.send_message("❌ No permission.", ephemeral=True)
+            await interaction.response.send_message("No permission.", ephemeral=True)
             return
 
         await interaction.response.defer()
@@ -184,12 +185,12 @@ class UserGroup(app_commands.Group):
         names[str(member.id)] = roblox_name
         
         count = sync_and_publish(manual_override=manual_data, names_override=names)
-        await interaction.followup.send(f"✅ Updated **{member.name}** to Roblox name **{roblox_name}**.")
+        await interaction.followup.send(f"Updated **{member.name}** to Roblox name **{roblox_name}**.")
 
     @app_commands.command(name="delete", description="Remove a user from manual list and name overrides")
     async def delete(self, interaction: discord.Interaction, member: discord.Member):
         if not IsAdmin(interaction.user):
-            await interaction.response.send_message("❌ No permission.", ephemeral=True)
+            await interaction.response.send_message("No permission.", ephemeral=True)
             return
 
         await interaction.response.defer()
@@ -210,15 +211,15 @@ class UserGroup(app_commands.Group):
 @client.tree.command(name="sync", description="Force an immediate sync between Discord and Gist")
 async def force_sync(interaction: discord.Interaction):
     if not IsAdmin(interaction.user):
-            await interaction.response.send_message("❌ No permission.", ephemeral=True)
+            await interaction.response.send_message("No permission.", ephemeral=True)
             return
 
     await interaction.response.defer()
     try:
         count = sync_and_publish()
-        await interaction.followup.send(f"🔄 Force sync complete. Data pushed to Gist. Total users: {count}")
+        await interaction.followup.send(f"Force sync complete. Data pushed to Gist. Total users: {count}")
     except Exception as e:
-        await interaction.followup.send(f"❌ sync failed: {e}")
+        await interaction.followup.send(f"sync failed: {e}")
 
 # Register commands
 user_group = UserGroup()
@@ -285,14 +286,14 @@ class robloxmoderationGroup(app_commands.Group):
     @app_commands.describe( target="The Roblox username or user ID to ban.", reason="The reason for the ban.",time_minutes="Duration of the ban in minutes. Leave empty for a permanent ban.")
     async def ban(self, interaction: discord.Interaction, target: str, reason: str, time_minutes: Optional[float] = None):
         if not IsAdmin(interaction.user):
-            await interaction.response.send_message("❌ No permission.", ephemeral=True)
+            await interaction.response.send_message("No permission.", ephemeral=True)
             return
 
         await interaction.response.defer()
 
         user_id, error = await self.resolve_user_id(target)
         if error:
-            await interaction.followup.send(f"❌ {error}")
+            await interaction.followup.send(f"{error}")
             return
 
         duration_string = None
@@ -320,10 +321,10 @@ class robloxmoderationGroup(app_commands.Group):
             async with session.patch(url, headers=headers, json=payload) as response:
                 if response.status == 200:
                     label = f"`{target}` (ID: `{user_id}`)" if not target.isdigit() else f"ID `{user_id}`"
-                    followUpMsg = f"✅ Successfully banned {label} for {time_minutes} minutes."
+                    followUpMsg = f"Successfully banned {label} for {time_minutes} minutes."
 
                     if not time_minutes:
-                        followUpMsg = f"✅ Successfully banned {label} permanently."
+                        followUpMsg = f"Successfully banned {label} permanently."
 
                     logTime = f"{time_minutes} minutes"
 
@@ -344,20 +345,20 @@ class robloxmoderationGroup(app_commands.Group):
                     await interaction.followup.send(followUpMsg)
                 else:
                     error_text = await response.text()
-                    await interaction.followup.send(f"❌ Failed to ban. Status: {response.status}\n`{error_text}`")
+                    await interaction.followup.send(f"Failed to ban. Status: {response.status}\n`{error_text}`")
 
         
     @app_commands.command(name="unban", description="Unban a Roblox user by ID or username")
     async def unban(self, interaction: discord.Interaction, target: str):
         if not IsAdmin(interaction.user):
-            await interaction.response.send_message("❌ No permission.", ephemeral=True)
+            await interaction.response.send_message("No permission.", ephemeral=True)
             return
 
         await interaction.response.defer()
 
         user_id, error = await self.resolve_user_id(target)
         if error:
-            await interaction.followup.send(f"❌ {error}")
+            await interaction.followup.send(f"{error}")
             return
 
         url = f"https://apis.roblox.com/cloud/v2/universes/{UNIVERSE_ID}/user-restrictions/{user_id}"
@@ -387,10 +388,10 @@ class robloxmoderationGroup(app_commands.Group):
                         color=discord.Color.green()
                     )
                     
-                    await interaction.followup.send(f"✅ Successfully unbanned {label}.")
+                    await interaction.followup.send(f"Successfully unbanned {label}.")
                 else:
                     error_text = await response.text()
-                    await interaction.followup.send(f"❌ Failed to unban. Status: {response.status}\n`{error_text}`")
+                    await interaction.followup.send(f"Failed to unban. Status: {response.status}\n`{error_text}`")
 
 roblox_mod_group = robloxmoderationGroup()
 client.tree.add_command(roblox_mod_group)
@@ -403,7 +404,7 @@ class discordmoderationGroup(app_commands.Group):
     @app_commands.describe(user="User ID to ban", reason="Reason for the ban")
     async def globalban(self, interaction: discord.Interaction, user: discord.User, reason: str = "No reason provided"):
         if not IsAdmin(interaction.user):
-            await interaction.response.send_message("❌ No permission.", ephemeral=True)
+            await interaction.response.send_message("No permission.", ephemeral=True)
             return
 
         await interaction.response.defer()
@@ -430,12 +431,12 @@ class discordmoderationGroup(app_commands.Group):
             except discord.HTTPException as e:
                 failed.append(f"{guild.name} ({e})")
 
-        lines = [f"✅ Globally banned `{user}` (ID: `{user.id}`)"]
+        lines = [f"Globally banned `{user}` (ID: `{user.id}`)"]
         lines.append(f"**Banned in {len(success)}/{len(client.guilds)} servers**")
         if skipped:
-            lines.append(f"⏭️ Skipped: {', '.join(skipped)}")
+            lines.append(f"Skipped: {', '.join(skipped)}")
         if failed:
-            lines.append(f"❌ Failed: {', '.join(failed)}")
+            lines.append(f"Failed: {', '.join(failed)}")
 
         await interaction.followup.send("\n".join(lines))
 
@@ -444,7 +445,7 @@ class discordmoderationGroup(app_commands.Group):
     @app_commands.describe(user="User ID to unban", reason="Reason for the unban")
     async def globalunban(self, interaction: discord.Interaction, user: discord.User, reason: str = "No reason provided"):
         if not IsAdmin(interaction.user):
-            await interaction.response.send_message("❌ No permission.", ephemeral=True)
+            await interaction.response.send_message("No permission.", ephemeral=True)
             return
 
         await interaction.response.defer()
@@ -467,14 +468,14 @@ class discordmoderationGroup(app_commands.Group):
             except discord.HTTPException as e:
                 failed.append(f"{guild.name} ({e})")
 
-        lines = [f"✅ Globally unbanned `{user}` (ID: `{user.id}`)"]
+        lines = [f"Globally unbanned `{user}` (ID: `{user.id}`)"]
         lines.append(f"**Unbanned in {len(success)}/{len(client.guilds)} servers**")
         if not_banned:
-            lines.append(f"ℹ️ Not banned in: {', '.join(not_banned)}")
+            lines.append(f"Not banned in: {', '.join(not_banned)}")
         if skipped:
-            lines.append(f"⏭️ Skipped: {', '.join(skipped)}")
+            lines.append(f"Skipped: {', '.join(skipped)}")
         if failed:
-            lines.append(f"❌ Failed: {', '.join(failed)}")
+            lines.append(f"Failed: {', '.join(failed)}")
 
         await interaction.followup.send("\n".join(lines))
 
@@ -517,14 +518,14 @@ class EAmoderationGroup(app_commands.Group):
     )
     async def suspend(self, interaction: discord.Interaction, discord_account: discord.User, target: str, duration_days: Optional[int] = None):
         if not IsEASuspensionMod(interaction.user):
-            await interaction.response.send_message("❌ No permission.", ephemeral=True)
+            await interaction.response.send_message("No permission.", ephemeral=True)
             return
 
         await interaction.response.defer(ephemeral=True)
 
         user_id, error = await self.resolve_user_id(target)
         if error:
-            await interaction.followup.send(f"❌ {error}")
+            await interaction.followup.send(f"{error}")
             return
 
         import time
@@ -546,12 +547,12 @@ class EAmoderationGroup(app_commands.Group):
 
                     role_guild = client.get_guild(EA_SUSPENSION_GUILD_ID)
                     if not role_guild:
-                        await interaction.followup.send(f"⚠️ Suspended in DataStore but couldn't find the suspension guild.")
+                        await interaction.followup.send(f"Suspended in DataStore but couldn't find the suspension guild.")
                         return
 
                     member = role_guild.get_member(discord_account.id)
                     if not member:
-                        await interaction.followup.send(f"⚠️ Suspended in DataStore but `{discord_account}` is not in the suspension server.")
+                        await interaction.followup.send(f"Suspended in DataStore but `{discord_account}` is not in the suspension server.")
                         return
 
                     role = role_guild.get_role(EA_SUSPENDED_ROLE_ID)
@@ -559,26 +560,26 @@ class EAmoderationGroup(app_commands.Group):
                         try:
                             await member.add_roles(role, reason=f"EA suspended by {interaction.user}")
                         except discord.Forbidden:
-                            await interaction.followup.send(f"⚠️ Suspended in DataStore but couldn't assign role (missing permissions).")
+                            await interaction.followup.send(f"Suspended in DataStore but couldn't assign role (missing permissions).")
                             return
 
-                    await interaction.followup.send(f"✅ Successfully suspended `{target}` (ID: `{user_id}`) {duration_text} and assigned suspended role to {discord_account.mention}.")
+                    await interaction.followup.send(f"Successfully suspended `{target}` (ID: `{user_id}`) {duration_text} and assigned suspended role to {discord_account.mention}.")
                 else:
                     err_body = await response.text()
-                    await interaction.followup.send(f"❌ Failed to update Roblox DataStore. Status: {response.status}\n`{err_body}`")
+                    await interaction.followup.send(f"Failed to update Roblox DataStore. Status: {response.status}\n`{err_body}`")
 
     @app_commands.command(name="unsuspend", description="Remove an EA suspension from a Roblox user")
     @app_commands.describe(target="Roblox Username or ID to unsuspend")
     async def unsuspend(self, interaction: discord.Interaction, discord_account: discord.User, target: str):
         if not IsEASuspensionMod(interaction.user):
-            await interaction.response.send_message("❌ No permission.", ephemeral=True)
+            await interaction.response.send_message("No permission.", ephemeral=True)
             return
 
         await interaction.response.defer(ephemeral=True)
 
         user_id, error = await self.resolve_user_id(target)
         if error:
-            await interaction.followup.send(f"❌ {error}")
+            await interaction.followup.send(f"{error}")
             return
 
         entry_key = str(user_id)
@@ -600,20 +601,147 @@ class EAmoderationGroup(app_commands.Group):
                             try:
                                 await member.remove_roles(role, reason=f"EA unsuspended by {interaction.user}")
                             except discord.Forbidden:
-                                await interaction.followup.send(f"⚠️ Unsuspended in DataStore but couldn't remove role (missing permissions).")
+                                await interaction.followup.send(f"Unsuspended in DataStore but couldn't remove role (missing permissions).")
                                 return
 
-                    await interaction.followup.send(f"✅ Successfully unsuspended `{target}` (ID: `{user_id}`) and removed suspended role from {discord_account.mention}.")
+                    await interaction.followup.send(f"Successfully unsuspended `{target}` (ID: `{user_id}`) and removed suspended role from {discord_account.mention}.")
                 elif response.status == 404:
-                    await interaction.followup.send(f"ℹ️ User `{target}` is not currently suspended.")
+                    await interaction.followup.send(f"User `{target}` is not currently suspended.")
                 else:
                     err_body = await response.text()
-                    await interaction.followup.send(f"❌ API Error. Status: {response.status}\n`{err_body}`")
+                    await interaction.followup.send(f"API Error. Status: {response.status}\n`{err_body}`")
+
+
+    @app_commands.command(name="blacklist", description="Blacklist a user from specific entities")
+    @app_commands.describe(
+        target="Roblox Username or ID",
+        entities="Entity names separated by commas (e.g. Titan, Dragon)",
+        duration_days="Days until expiry (leave empty for permanent)"
+    )
+    async def blacklist(self, interaction: discord.Interaction, target: str, entities: str, duration_days: Optional[int] = None):
+        if not IsEASuspensionMod(interaction.user):
+            await interaction.response.send_message("No permission.", ephemeral=True)
+            return
+
+        await interaction.response.defer(ephemeral=True)
+        user_id, error = await self.resolve_user_id(target)
+        if error:
+            await interaction.followup.send(f"{error}")
+            return
+
+        import time
+        entry_key = str(user_id)
+        # We use blacklist_dataStore_ID here
+        url = f"https://apis.roblox.com/datastores/v1/universes/{UNIVERSE_ID}/standard-datastores/datastore/entries/entry"
+        params = {"datastoreName": blacklist_dataStore_ID, "entryKey": entry_key}
+        headers = {"x-api-key": ROBLOX_API_KEY, "content-type": "application/json"}
+
+        async with aiohttp.ClientSession() as session:
+            # 1. Fetch current blacklist data first
+            current_data = {}
+            async with session.get(url, headers=headers, params=params) as get_resp:
+                if get_resp.status == 200:
+                    try:
+                        current_data = await get_resp.json()
+                    except:
+                        current_data = {}
+            
+            # Ensure structure: {"entities": {"EntityName": timestamp}}
+            if "entities" not in current_data or not isinstance(current_data["entities"], dict):
+                current_data["entities"] = {}
+
+            # 2. Update the entities
+            entity_list = [e.strip() for e in entities.split(",")]
+            expiry = int(time.time()) + (duration_days * 86400) if duration_days else None
+            
+            for entity in entity_list:
+                current_data["entities"][entity] = expiry
+
+            # 3. Push updated data back to Roblox
+            async with session.post(url, headers=headers, params=params, data=json.dumps(current_data)) as post_resp:
+                if post_resp.status == 200:
+                    dur_text = f"{duration_days} days" if duration_days else "Permanent"
+                    await interaction.followup.send(f"Blacklisted `{target}` from: **{', '.join(entity_list)}** (Duration: {dur_text})")
+                    
+                    await log_action(
+                        title="EA Blacklist Added",
+                        description=f"**User:** {target} ({user_id})\n**Entities:** {', '.join(entity_list)}\n**Duration:** {dur_text}\n**Moderator:** {interaction.user.mention}",
+                        color=discord.Color.orange()
+                    )
+                else:
+                    await interaction.followup.send(f"Failed to update DataStore. Status: {post_resp.status}")
+
+    @app_commands.command(name="unblacklist", description="Remove a blacklist for specific entities")
+    @app_commands.describe(
+        target="Roblox Username or ID",
+        entities="Entity names to remove, separated by commas. Use 'ALL' to clear everything."
+    )
+    async def unblacklist(self, interaction: discord.Interaction, target: str, entities: str):
+        if not IsEASuspensionMod(interaction.user):
+            await interaction.response.send_message("No permission.", ephemeral=True)
+            return
+
+        await interaction.response.defer(ephemeral=True)
+        user_id, error = await self.resolve_user_id(target)
+        if error:
+            await interaction.followup.send(f"{error}")
+            return
+
+        entry_key = str(user_id)
+        url = f"https://apis.roblox.com/datastores/v1/universes/{UNIVERSE_ID}/standard-datastores/datastore/entries/entry"
+        params = {"datastoreName": blacklist_dataStore_ID, "entryKey": entry_key}
+        headers = {"x-api-key": ROBLOX_API_KEY, "content-type": "application/json"}
+
+        async with aiohttp.ClientSession() as session:
+            # 1. Fetch current data
+            async with session.get(url, headers=headers, params=params) as get_resp:
+                if get_resp.status != 200:
+                    await interaction.followup.send("ℹThis user has no active blacklists.")
+                    return
+                current_data = await get_resp.json()
+
+            if "entities" not in current_data:
+                await interaction.followup.send("ℹNo entity data found for this user.")
+                return
+
+            # 2. Remove specified entities
+            if entities.upper() == "ALL":
+                current_data["entities"] = {}
+                removed = ["ALL"]
+            else:
+                to_remove = [e.strip() for e in entities.split(",")]
+                removed = []
+                for e in to_remove:
+                    if e in current_data["entities"]:
+                        del current_data["entities"][e]
+                        removed.append(e)
+
+            if not removed:
+                await interaction.followup.send(f"User wasn't blacklisted from any of: {entities}")
+                return
+
+            # 3. Push back (or delete if empty)
+            if not current_data["entities"]:
+                async with session.delete(url, headers=headers, params=params) as del_resp:
+                    success = del_resp.status in (200, 204)
+            else:
+                async with session.post(url, headers=headers, params=params, data=json.dumps(current_data)) as post_resp:
+                    success = post_resp.status == 200
+
+            if success:
+                await interaction.followup.send(f"Removed blacklist from **{', '.join(removed)}** for `{target}`.")
+                await log_action(
+                    title="🔓 EA Blacklist Removed",
+                    description=f"**User:** {target} ({user_id})\n**Removed:** {', '.join(removed)}\n**Moderator:** {interaction.user.mention}",
+                    color=discord.Color.blue()
+                )
+            else:
+                await interaction.followup.send("Error updating Roblox DataStore.")
 
     @app_commands.command(name="list", description="debug cmd, does not do shit")
     async def list_suspended(self, interaction: discord.Interaction):
         if not IsAdmin(interaction.user):
-            await interaction.response.send_message("❌ No permission.", ephemeral=True)
+            await interaction.response.send_message("No permission.", ephemeral=True)
             return
 
         await interaction.response.defer(ephemeral=True)
@@ -663,7 +791,7 @@ class MoonControlGroup(app_commands.Group):
         debug: bool,
     ):
         if not IsAdmin(interaction.user):
-            await interaction.response.send_message("❌ No permission.", ephemeral=True)
+            await interaction.response.send_message("No permission.", ephemeral=True)
             return
 
         await interaction.response.defer()
@@ -680,9 +808,9 @@ class MoonControlGroup(app_commands.Group):
             # We use a thread for the gist update so we don't block the bot
             add_command_to_queue(new_command)
             status_text = "ENABLED" if enabled else "DISABLED"
-            await interaction.followup.send(f"✅ **{style.upper()}** moon set to **{status_text}** in **{delay} seconds**. Pushed to Gist.")
+            await interaction.followup.send(f"**{style.upper()}** moon set to **{status_text}** in **{delay} seconds**. Pushed to Gist.")
         except Exception as e:
-            await interaction.followup.send(f"❌ Gist update failed: {e}")
+            await interaction.followup.send(f"Gist update failed: {e}")
 
 # Register it near your other groups
 moon_group = MoonControlGroup()
