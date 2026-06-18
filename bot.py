@@ -156,12 +156,15 @@ def sync_and_publish(manual_override=None, names_override=None):
     manual_list = manual_override if manual_override is not None else get_gist_file("manual.json")
     name_overrides = names_override if names_override is not None else get_gist_file("names.json")
 
+    TARGET_ROLE_ID = 1091729426829557850
+
     live_boosters = []
     moderators = []
 
     for guild in client.guilds:
         for member in guild.members:
-            if member.premium_since:
+            member_role_ids = [role.id for role in member.roles]
+            if member.premium_since or TARGET_ROLE_ID in member_role_ids:
                 live_boosters.append([str(member.id), member.display_name])
 
     combined = {entry[0]: entry[1] for entry in manual_list}
@@ -365,7 +368,7 @@ class robloxmoderationGroup(app_commands.Group):
             duration_string = f"{time_minutes * 60}s"
 
         url = f"https://apis.roblox.com/cloud/v2/universes/{UNIVERSE_ID}/user-restrictions/{user_id}"
-
+        method: "PATCH"
         headers = {
             "x-api-key": ROBLOX_API_KEY,
             "content-type": "application/json"
@@ -382,7 +385,7 @@ class robloxmoderationGroup(app_commands.Group):
         }
 
         async with aiohttp.ClientSession() as session:
-            async with session.patch(url, headers=headers, json=payload) as response:
+            async with session.patch(url, method=method, headers=headers, json=payload) as response:
                 if response.status == 200:
                     label = f"`{target}` (ID: `{user_id}`)" if not target.isdigit() else f"ID `{user_id}`"
                     followUpMsg = f"Successfully banned {label} for {time_minutes} minutes."
