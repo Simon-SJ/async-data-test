@@ -441,7 +441,7 @@ class robloxmoderationGroup(app_commands.Group):
         }
 
         async with aiohttp.ClientSession() as session:
-            async with session.patch(url, headers=headers, json=payload) as response:
+            async with session.request(method, url, headers=headers, json=payload) as response:
                 if response.status == 200:
                     label = f"`{target}` (ID: `{user_id}`)" if not target.isdigit() else f"ID `{user_id}`"
 
