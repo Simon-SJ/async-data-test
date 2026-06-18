@@ -17,7 +17,7 @@ ROBLOX_API_KEY = os.getenv("ROBLOX_API_KEY")
 TOKEN = os.getenv("DISCORD_TOKEN")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 GIST_ID = os.getenv("GIST_ID")
-OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")  # e.g. http://192.168.1.50:11434
+OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma3:4b")
 ADMIN_IDs = {595524051208765442, 554691397601591306 , 781870312194703380, 465161449359147010, 659284243951910933 }
 MODERATOR_ROLE_IDS = {1271205269183139891, 1091729426850521105, 1271208960463999079, 1145150303210049576, 1411096066602045533, 1271202265688051722}
@@ -33,7 +33,7 @@ ALLOWED_GUILD_ID = 1270991212811391060
 class MyClient(discord.Client):
     def __init__(self):
         intents = discord.Intents.default()
-        intents.members = True 
+        intents.members = True
         intents.message_content = True
         super().__init__(intents=intents)
         self.tree = app_commands.CommandTree(self)
@@ -81,7 +81,7 @@ async def prompt_ollama(user_message: str) -> str:
             async with session.post(
                 f"{OLLAMA_HOST}/api/chat",
                 json=payload,
-                timeout=aiohttp.ClientTimeout(total=120),  # generous timeout for local inference
+                timeout=aiohttp.ClientTimeout(total=120),
             ) as resp:
                 if resp.status == 200:
                     data = await resp.json()
@@ -98,20 +98,20 @@ async def prompt_ollama(user_message: str) -> str:
 
 
 async def log_action(title: str, description: str, color: discord.Color = discord.Color.blue()):
-        #Sends an embed log to the designated logging channel.
-        LOG_CHANNEL_ID = 1496863034818433096
-        channel = client.get_channel(LOG_CHANNEL_ID)
-        
-        if channel:
-            embed = discord.Embed(
-                title=title,
-                description=description,
-                color=color,
-                timestamp=discord.utils.utcnow()
-            )
-            await channel.send(embed=embed)
-        else:
-            print(f"Could not find log channel with ID {LOG_CHANNEL_ID}")
+    """Sends an embed log to the designated logging channel."""
+    LOG_CHANNEL_ID = 1496863034818433096
+    channel = client.get_channel(LOG_CHANNEL_ID)
+
+    if channel:
+        embed = discord.Embed(
+            title=title,
+            description=description,
+            color=color,
+            timestamp=discord.utils.utcnow()
+        )
+        await channel.send(embed=embed)
+    else:
+        print(f"Could not find log channel with ID {LOG_CHANNEL_ID}")
 
 def IsEASuspensionMod(user):
     if user.id in ADMIN_IDs:
@@ -124,7 +124,7 @@ def IsAdmin(user):
     if user.id in ADMIN_IDs:
         return True
     if any(role.id in MODERATOR_ROLE_IDS for role in user.roles):
-            return True
+        return True
     return False
 
 def get_gist_file(filename):
@@ -235,9 +235,9 @@ class UserGroup(app_commands.Group):
         await interaction.response.defer()
         manual_data = get_gist_file("manual.json")
         names = get_gist_file("names.json")
-        
+
         names[str(member.id)] = roblox_name
-        
+
         count = sync_and_publish(manual_override=manual_data, names_override=names)
         await interaction.followup.send(f"Updated **{member.name}** to Roblox name **{roblox_name}**.")
 
@@ -253,7 +253,7 @@ class UserGroup(app_commands.Group):
         user_id_str = str(member.id)
 
         new_manual = [entry for entry in manual_data if entry[0] != user_id_str]
-        
+
         if user_id_str in names:
             del names[user_id_str]
 
@@ -263,8 +263,8 @@ class UserGroup(app_commands.Group):
 @client.tree.command(name="sync", description="Force an immediate sync between Discord and Gist")
 async def force_sync(interaction: discord.Interaction):
     if not IsAdmin(interaction.user):
-            await interaction.response.send_message("No permission.", ephemeral=True)
-            return
+        await interaction.response.send_message("No permission.", ephemeral=True)
+        return
 
     await interaction.response.defer()
     try:
@@ -299,10 +299,13 @@ async def on_message(message):
     if message.author == client.user:
         return
 
+    # BUG FIX 1: Added return after DM forwarding so message.guild.id
+    # is never accessed on a None guild object below.
     if message.guild is None:
         DmChannel = client.get_channel(1470330654448156672)
         if DmChannel:
             await DmChannel.send(f"{message.content} from {message.author}")
+        return
 
     if f"<@{client.user.id}>" in message.content:
         if message.guild.id != ALLOWED_GUILD_ID:
@@ -310,13 +313,11 @@ async def on_message(message):
 
         print(f"\r\n \r\n prompt: {message.content}")
 
-        # Show a typing indicator while the model generates
         async with message.channel.typing():
             response = await prompt_ollama(message.content)
 
         print(f"response: {response}")
 
-        # Discord messages have a 2000 char limit — chunk if needed
         if len(response) <= 2000:
             await message.channel.send(response)
         else:
@@ -339,7 +340,7 @@ class robloxmoderationGroup(app_commands.Group):
             async with session.post(url, json=payload) as response:
                 if response.status != 200:
                     return None, f"Failed to contact Roblox API. Status: {response.status}"
-                
+
                 data = await response.json()
                 users = data.get("data", [])
 
@@ -367,6 +368,8 @@ class robloxmoderationGroup(app_commands.Group):
             duration_string = f"{time_minutes * 60}s"
 
         url = f"https://apis.roblox.com/cloud/v2/universes/{UNIVERSE_ID}/user-restrictions/{user_id}"
+        # BUG FIX 2: Removed `method: "PATCH"` (was a type annotation, not an assignment)
+        # and removed `method=method` from session.patch() (not a valid aiohttp parameter).
         headers = {
             "x-api-key": ROBLOX_API_KEY,
             "content-type": "application/json"
@@ -412,7 +415,6 @@ class robloxmoderationGroup(app_commands.Group):
                     error_text = await response.text()
                     await interaction.followup.send(f"Failed to ban. Status: {response.status}\n`{error_text}`")
 
-        
     @app_commands.command(name="unban", description="Unban a Roblox user by ID or username")
     async def unban(self, interaction: discord.Interaction, target: str):
         if not IsAdmin(interaction.user):
@@ -427,12 +429,10 @@ class robloxmoderationGroup(app_commands.Group):
             return
 
         url = f"https://apis.roblox.com/cloud/v2/universes/{UNIVERSE_ID}/user-restrictions/{user_id}"
-
         headers = {
             "x-api-key": ROBLOX_API_KEY,
             "content-type": "application/json"
         }
-
         payload = {
             "gameJoinRestriction": {
                 "active": False,
@@ -452,7 +452,7 @@ class robloxmoderationGroup(app_commands.Group):
                         ),
                         color=discord.Color.green()
                     )
-                    
+
                     await interaction.followup.send(f"Successfully unbanned {label}.")
                 else:
                     error_text = await response.text()
@@ -503,7 +503,6 @@ class discordmoderationGroup(app_commands.Group):
             lines.append(f"Failed: {', '.join(failed)}")
 
         await interaction.followup.send("\n".join(lines))
-
 
     @app_commands.command(name="globalunban", description="Unban a user from all servers the bot is in")
     @app_commands.describe(user="User ID to unban", reason="Reason for the unban")
@@ -674,7 +673,6 @@ class EAmoderationGroup(app_commands.Group):
                     err_body = await response.text()
                     await interaction.followup.send(f"API Error. Status: {response.status}\n`{err_body}`")
 
-
     @app_commands.command(name="blacklist", description="Blacklist a user from specific entities")
     @app_commands.describe(
         target="Roblox Username or ID",
@@ -705,13 +703,13 @@ class EAmoderationGroup(app_commands.Group):
                         current_data = await get_resp.json()
                     except:
                         current_data = {}
-            
+
             if not current_data:
                 current_data = {}
 
             entity_list = [e.strip() for e in entities.split(",")]
             expiry = int(time.time()) + (duration_days * 86400) if duration_days else None
-            
+
             for entity in entity_list:
                 current_data[entity] = expiry
 
@@ -719,7 +717,7 @@ class EAmoderationGroup(app_commands.Group):
                 if post_resp.status == 200:
                     dur_text = f"{duration_days} days" if duration_days else "Permanent"
                     await interaction.followup.send(f"Blacklisted `{target}` from: **{', '.join(entity_list)}** (Duration: {dur_text})")
-                    
+
                     await log_action(
                         title="EA Blacklist Added",
                         description=f"**User:** {target} ({user_id})\n**Entities:** {', '.join(entity_list)}\n**Duration:** {dur_text}\n**Moderator:** {interaction.user.mention}",
@@ -752,35 +750,41 @@ class EAmoderationGroup(app_commands.Group):
         async with aiohttp.ClientSession() as session:
             async with session.get(url, headers=headers, params=params) as get_resp:
                 if get_resp.status != 200:
-                    await interaction.followup.send("ℹThis user has no active blacklists.")
+                    await interaction.followup.send("This user has no active blacklists.")
                     return
                 current_data = await get_resp.json()
 
-            if "entities" not in current_data:
-                await interaction.followup.send("ℹNo entity data found for this user.")
+            # BUG FIX 3: The original code checked for current_data["entities"] but blacklist
+            # stores entities as top-level keys (e.g. {"Titan": 1234, "Dragon": None}).
+            # Fixed to work directly on current_data instead of a nested "entities" dict.
+            if not current_data:
+                await interaction.followup.send("No entity data found for this user.")
                 return
 
+            success = False
+
             if entities.upper() == "ALL":
-                current_data["entities"] = {}
                 removed = ["ALL"]
+                async with session.delete(url, headers=headers, params=params) as del_resp:
+                    success = del_resp.status in (200, 204)
             else:
                 to_remove = [e.strip() for e in entities.split(",")]
                 removed = []
                 for e in to_remove:
-                    if e in current_data["entities"]:
-                        del current_data["entities"][e]
+                    if e in current_data:
+                        del current_data[e]
                         removed.append(e)
 
-            if not removed:
-                await interaction.followup.send(f"User wasn't blacklisted from any of: {entities}")
-                return
+                if not removed:
+                    await interaction.followup.send(f"User wasn't blacklisted from any of: {entities}")
+                    return
 
-            if not current_data["entities"]:
-                async with session.delete(url, headers=headers, params=params) as del_resp:
-                    success = del_resp.status in (200, 204)
-            else:
-                async with session.post(url, headers=headers, params=params, data=json.dumps(current_data)) as post_resp:
-                    success = post_resp.status == 200
+                if not current_data:
+                    async with session.delete(url, headers=headers, params=params) as del_resp:
+                        success = del_resp.status in (200, 204)
+                else:
+                    async with session.post(url, headers=headers, params=params, data=json.dumps(current_data)) as post_resp:
+                        success = post_resp.status == 200
 
             if success:
                 await interaction.followup.send(f"Removed blacklist from **{', '.join(removed)}** for `{target}`.")
@@ -811,13 +815,13 @@ def add_command_to_queue(new_command):
     """Fetches the current queue, adds a new command, and pushes back to Gist."""
     url = f"https://api.github.com/gists/{GIST_ID}"
     headers = {"Authorization": f"token {GITHUB_TOKEN}"}
-    
+
     current_queue = get_gist_file("ExternalBridge.json")
     if not isinstance(current_queue, list):
         current_queue = []
-    
+
     current_queue.append(new_command)
-    
+
     payload = {
         "files": {
             "ExternalBridge.json": {"content": json.dumps(current_queue, indent=2)}
@@ -834,9 +838,9 @@ class MoonControlGroup(app_commands.Group):
     @app_commands.command(name="set", description="Trigger a blackout or change the moon style with a delay")
     @app_commands.describe(delay="Set a delay in seconds before the moon triggers", debug="Makes the command only trigger in private servers and studio")
     async def set_moon(
-        self, 
-        interaction: discord.Interaction, 
-        enabled: bool, 
+        self,
+        interaction: discord.Interaction,
+        enabled: bool,
         style: Literal['blood', 'fun', 'hallow', 'blackout'],
         delay: int,
         debug: bool,
@@ -896,7 +900,7 @@ class SettingsGroup(app_commands.Group):
             await interaction.followup.send("No permission.")
             return
 
-        FILENAME = "instructions.txt" 
+        FILENAME = "instructions.txt"
         url = f"https://api.github.com/gists/{GIST_ID}"
         headers = {
             "Authorization": f"token {GITHUB_TOKEN}",
