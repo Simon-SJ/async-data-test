@@ -203,7 +203,7 @@ class UserGroup(app_commands.Group):
         super().__init__(name="user", description="Manage booster list")
 
     @app_commands.command(name="add", description="Add a user to the manual list")
-    async def add(self, interaction: discord.Interaction, member: discord.Member, roblox_name: str):
+    async def add(self, interaction: discord.Interaction, user_id: str, roblox_name: str):
         if not IsAdmin(interaction.user):
             await interaction.response.send_message("No permission.", ephemeral=True)
             return
@@ -211,21 +211,20 @@ class UserGroup(app_commands.Group):
         await interaction.response.defer()
         manual_data = get_gist_file("manual.json")
         name_overrides = get_gist_file("names.json")
-        
-        display_name = roblox_name if roblox_name else member.display_name
-        user_id_str = str(member.id)
+
+        display_name = roblox_name if roblox_name else user_id
 
         found = False
         for entry in manual_data:
-            if entry[0] == user_id_str:
-                entry[1] = display_name
+            if entry[0] == user_id:
+                entry[1] = roblox_name
                 found = True
                 break
         if not found:
-            manual_data.append([user_id_str, display_name])
+            manual_data.append([user_id, display_name])
 
         count = sync_and_publish(manual_override=manual_data, names_override=name_overrides)
-        await interaction.followup.send(f"Added **{member.name}** as '{display_name}'. Total: {count}")
+        await interaction.followup.send(f"Added **{user_id}** as '{display_name}'. Total: {count}")
 
     @app_commands.command(name="update", description="Update a user's Roblox name")
     async def update(self, interaction: discord.Interaction, member: discord.Member, roblox_name: str):
