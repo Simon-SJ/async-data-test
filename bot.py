@@ -349,33 +349,31 @@ class robloxmoderationGroup(app_commands.Group):
 
                 return str(users[0]["id"]), None
 
-    @app_commands.command(name="ban", description="Ban a Roblox user by ID or username")
-    @app_commands.describe(target="The Roblox username or user ID to ban.", reason="The reason for the ban.", time_minutes="Duration of the ban in minutes. Leave empty for a permanent ban.")
-    async def ban(self, interaction: discord.Interaction, target: str, reason: str, time_minutes: Optional[float] = None):
+    @app_commands.command(name="ban", description="Ban one or more Roblox users by ID or username")
+    @app_commands.describe(targets="One or more Roblox usernames or user IDs, separated by commas or spaces.", reason="The reason for the ban.", time_minutes="Duration of the ban in minutes. Leave empty for a permanent ban.")
+    async def ban(self, interaction: discord.Interaction, targets: str, reason: str, time_minutes: Optional[float] = None):
         if not IsAdmin(interaction.user):
             await interaction.response.send_message("No permission.", ephemeral=True)
             return
 
         await interaction.response.defer()
 
-        user_id, error = await self.resolve_user_id(target)
-        if error:
-            await interaction.followup.send(f"{error}")
+        raw_targets = [t.strip() for t in targets.replace(",", " ").split() if t.strip()]
+
+        if not raw_targets:
+            await interaction.followup.send("No valid targets provided.")
             return
 
         duration_string = None
         if time_minutes:
             duration_string = f"{time_minutes * 60}s"
 
-        url = f"https://apis.roblox.com/cloud/v2/universes/{UNIVERSE_ID}/user-restrictions/{user_id}"
-        # BUG FIX 2: Removed `method: "PATCH"` (was a type annotation, not an assignment)
-        # and removed `method=method` from session.patch() (not a valid aiohttp parameter).
         headers = {
             "x-api-key": ROBLOX_API_KEY,
             "content-type": "application/json"
         }
 
-        payload = {
+        payload_template = {
             "gameJoinRestriction": {
                 "active": True,
                 "duration": duration_string,
@@ -385,35 +383,48 @@ class robloxmoderationGroup(app_commands.Group):
             }
         }
 
+        results = []
+
         async with aiohttp.ClientSession() as session:
-            async with session.patch(url, headers=headers, json=payload) as response:
-                if response.status == 200:
+            for target in raw_targets:
+                user_id, error = await self.resolve_user_id(target)
+                if error:
+                    results.append((target, False, error))
+                    continue
+
+                url = f"https://apis.roblox.com/cloud/v2/universes/{UNIVERSE_ID}/user-restrictions/{user_id}"
+
+                async with session.patch(url, headers=headers, json=payload_template) as response:
                     label = f"`{target}` (ID: `{user_id}`)" if not target.isdigit() else f"ID `{user_id}`"
-                    followUpMsg = f"Successfully banned {label} for {time_minutes} minutes."
+                    if response.status == 200:
+                        results.append((label, True, None))
+                    else:
+                        error_text = await response.text()
+                        results.append((label, False, f"Status {response.status}: {error_text}"))
 
-                    if not time_minutes:
-                        followUpMsg = f"Successfully banned {label} permanently."
+        successes = [label for label, ok, _ in results if ok]
+        failures = [(label, detail) for label, ok, detail in results if not ok]
 
-                    logTime = f"{time_minutes} minutes"
+        log_time = f"{time_minutes} minutes" if time_minutes else "Permanently"
+        summary_lines = []
 
-                    if not time_minutes:
-                        logTime = "Permanently"
+        if successes:
+            summary_lines.append(f"✅ Banned {log_time}: {', '.join(successes)}")
+            await log_action(
+                title="🔨 Roblox User(s) Banned",
+                description=(
+                    f"**Targets:** {', '.join(successes)}\n"
+                    f"**Moderator:** {interaction.user.mention}\n"
+                    f"**Duration:** {log_time}\n"
+                    f"**Reason:** {reason}"
+                ),
+                color=discord.Color.red()
+            )
 
-                    await log_action(
-                        title="🔨 Roblox User Banned",
-                        description=(
-                            f"**Target:** {label}\n"
-                            f"**Moderator:** {interaction.user.mention}\n"
-                            f"**Duration:** {logTime}\n"
-                            f"**Reason:** {reason}"
-                        ),
-                        color=discord.Color.red()
-                    )
+        for label, detail in failures:
+            summary_lines.append(f"❌ Failed to ban {label}: `{detail}`")
 
-                    await interaction.followup.send(followUpMsg)
-                else:
-                    error_text = await response.text()
-                    await interaction.followup.send(f"Failed to ban. Status: {response.status}\n`{error_text}`")
+        await interaction.followup.send("\n".join(summary_lines))
 
     @app_commands.command(name="unban", description="Unban a Roblox user by ID or username")
     async def unban(self, interaction: discord.Interaction, target: str):
