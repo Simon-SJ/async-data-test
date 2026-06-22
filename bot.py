@@ -387,6 +387,10 @@ class robloxmoderationGroup(app_commands.Group):
 
         async with aiohttp.ClientSession() as session:
             for target in raw_targets:
+
+                if target == "":
+                    continue
+
                 user_id, error = await self.resolve_user_id(target)
                 if error:
                     results.append((target, False, error))
