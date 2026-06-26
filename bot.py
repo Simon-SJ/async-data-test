@@ -304,7 +304,20 @@ async def on_message(message):
     if message.guild is None:
         DmChannel = client.get_channel(1470330654448156672)
         if DmChannel:
-            await DmChannel.send(f"{message.content} from {message.author}")
+            embed = discord.Embed(
+                title="New Direct Message",
+                description=message.content or "*[no text content]*",
+                color=discord.Color.blurple(),
+                timestamp=discord.utils.utcnow()
+            )
+            embed.set_author(name=str(message.author), icon_url=message.author.display_avatar.url)
+            embed.add_field(name="User ID", value=message.author.id, inline=True)
+            embed.add_field(name="Reply", value=f"`/dm send {message.author.id}`", inline=True)
+
+            if message.attachments:
+                embed.add_field(name="Attachments", value="\n".join(a.url for a in message.attachments), inline=False)
+
+            await DmChannel.send(embed=embed)
         return
 
     if f"<@{client.user.id}>" in message.content:
