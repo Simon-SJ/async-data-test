@@ -1010,7 +1010,7 @@ class DMGroup(app_commands.Group):
 
         try:
             await user.send(message)
-            await interaction.followup.send(f"✅ DM sent to `{user}` (`{user.id}`).")
+            await interaction.followup.send(f"✅ DM sent to `{user}` (`{user.id}`).", ephemeral=False)
             
         except discord.Forbidden:
             await interaction.followup.send(f"❌ Couldn't DM `{user}` — they may have DMs disabled.")
