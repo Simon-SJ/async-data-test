@@ -350,8 +350,8 @@ class robloxmoderationGroup(app_commands.Group):
                 return str(users[0]["id"]), None
 
     @app_commands.command(name="ban", description="Ban one or more Roblox users by ID or username")
-    @app_commands.describe(targets="One or more Roblox usernames or user IDs, separated by commas or spaces.", reason="The reason for the ban.", time_minutes="Duration of the ban in minutes. Leave empty for a permanent ban.")
-    async def ban(self, interaction: discord.Interaction, targets: str, reason: str, time_minutes: Optional[float] = None):
+    @app_commands.describe(targets="One or more Roblox usernames or user IDs, separated by commas or spaces.", reason="The reason for the ban.", time_minutes="Duration of the ban in minutes. Leave empty for a permanent ban.", public_reason="A message to be displayed for the banned user")
+    async def ban(self, interaction: discord.Interaction, targets: str, reason: str, time_minutes: Optional[float] = None, public_reason: Optional[str] = None):
         if not IsAdmin(interaction.user):
             await interaction.response.send_message("No permission.", ephemeral=True)
             return
@@ -378,7 +378,7 @@ class robloxmoderationGroup(app_commands.Group):
                 "active": True,
                 "duration": duration_string,
                 "privateReason": f"Banned by {interaction.user} ({interaction.user.id}): {reason}",
-                "displayReason": "You have been banned.",
+                "displayReason": public_reason or "You have been banned.",
                 "excludeAltAccounts": False
             }
         }
@@ -972,5 +972,52 @@ class SettingsGroup(app_commands.Group):
 
 settings_group = SettingsGroup()
 client.tree.add_command(settings_group)
+
+class DMGroup(app_commands.Group):
+    def __init__(self):
+        super().__init__(name="dm", description="DM tools")
+
+    @app_commands.command(name="send", description="Send a DM to a user by username or ID")
+    @app_commands.describe(target="Discord username or user ID", message="The message to send")
+    async def send_dm(self, interaction: discord.Interaction, target: str, message: str):
+        if not IsAdmin(interaction.user):
+            await interaction.response.send_message("No permission.", ephemeral=True)
+            return
+
+        await interaction.response.defer(ephemeral=True)
+
+        user = None
+
+        if target.isdigit():
+            try:
+                user = await client.fetch_user(int(target))
+            except discord.NotFound:
+                await interaction.followup.send(f"❌ No user found with ID `{target}`.")
+                return
+        else:
+            target_lower = target.lower().lstrip("@")
+            for guild in client.guilds:
+                for member in guild.members:
+                    if member.name.lower() == target_lower or member.display_name.lower() == target_lower:
+                        user = member
+                        break
+                if user:
+                    break
+
+            if not user:
+                await interaction.followup.send(f"❌ No member found with username `{target}`. Note: username search only works for members in shared servers.")
+                return
+
+        try:
+            await user.send(message)
+            await interaction.followup.send(f"✅ DM sent to `{user}` (`{user.id}`).")
+            
+        except discord.Forbidden:
+            await interaction.followup.send(f"❌ Couldn't DM `{user}` — they may have DMs disabled.")
+        except Exception as e:
+            await interaction.followup.send(f"❌ Error: `{e}`")
+
+dm_group = DMGroup()
+client.tree.add_command(dm_group)
 
 client.run(TOKEN)
