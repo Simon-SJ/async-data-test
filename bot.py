@@ -984,7 +984,7 @@ class DMGroup(app_commands.Group):
             await interaction.response.send_message("No permission.", ephemeral=True)
             return
 
-        await interaction.response.defer(ephemeral=True)
+        await interaction.response.defer()
 
         user = None
 
@@ -992,7 +992,7 @@ class DMGroup(app_commands.Group):
             try:
                 user = await client.fetch_user(int(target))
             except discord.NotFound:
-                await interaction.followup.send(f"❌ No user found with ID `{target}`.")
+                await interaction.followup.send(f"❌ No user found with ID `{target}`.", ephemeral=True)
                 return
         else:
             target_lower = target.lower().lstrip("@")
@@ -1013,9 +1013,9 @@ class DMGroup(app_commands.Group):
             await interaction.followup.send(f"✅ DM sent to `{user}` (`{user.id}`).", ephemeral=False)
             
         except discord.Forbidden:
-            await interaction.followup.send(f"❌ Couldn't DM `{user}` — they may have DMs disabled.")
+            await interaction.followup.send(f"❌ Couldn't DM `{user}` — they may have DMs disabled.", ephemeral=True)
         except Exception as e:
-            await interaction.followup.send(f"❌ Error: `{e}`")
+            await interaction.followup.send(f"❌ Error: `{e}`", ephemeral=True)
 
 dm_group = DMGroup()
 client.tree.add_command(dm_group)
