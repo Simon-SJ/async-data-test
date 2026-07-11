@@ -78,7 +78,8 @@ class RobloxModeration(commands.Cog):
                     f"**Targets:** {', '.join(successes)}\n"
                     f"**Moderator:** {interaction.user.mention}\n"
                     f"**Duration:** {log_time}\n"
-                    f"**Reason:** {reason}"
+                    f"**Reason:** {reason}\n"
+                    f"**Public Reason:** {public_reason}"
                 ),
                 color=discord.Color.red(),
             )
