@@ -11,9 +11,7 @@ every Gist read/write. Centralizing everything here on aiohttp fixes
 that everywhere at once instead of one call site at a time.
 """
 import json
-
 import aiohttp
-
 from config import GIST_ID, GITHUB_TOKEN
 
 _GIST_URL = f"https://api.github.com/gists/{GIST_ID}"
@@ -51,20 +49,37 @@ async def get_file(filename: str, default=None):
 
 async def put_files(files: dict) -> bool:
     """Write one or more files to the gist in a single PATCH request.
-    `files` maps filename -> the Python object to JSON-encode."""
+    Retries automatically on HTTP 409 Conflict errors.
+    """
     payload = {
         "files": {name: {"content": json.dumps(content, indent=2)} for name, content in files.items()}
     }
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.patch(_GIST_URL, headers=_HEADERS, json=payload) as resp:
-                if resp.status != 200:
-                    body = await resp.text()
-                    print(f"[gist_store] PATCH failed: HTTP {resp.status} {body}")
-                return resp.status == 200
-    except aiohttp.ClientError as e:
-        print(f"[gist_store] PATCH network error: {e}")
-        return False
+    
+    max_retries = 3
+    base_delay = 1.0
+
+    for attempt in range(max_retries):
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.patch(_GIST_URL, headers=_HEADERS, json=payload) as resp:
+                        if resp.status == 200:
+                            return True
+                        
+                        body = await resp.text()
+                        
+                        if resp.status == 409:
+                            print(f"[gist_store] PATCH conflict (409) on attempt {attempt + 1}. Retrying...")
+                            continue
+                            
+                        print(f"[gist_store] PATCH failed: HTTP {resp.status} {body}")
+                        return False
+                        
+            except aiohttp.ClientError as e:
+                print(f"[gist_store] PATCH network error: {e}")
+                return False
+                
+    print("[gist_store] PATCH failed after maximum retries due to persistent 409 Conflict.")
+    return False
 
 
 async def clear_file(filename: str) -> bool:
