@@ -34,7 +34,7 @@ BLACKLIST_DATASTORE_ID = "EntityBlacklists"
 # utils/permissions.py). This was two separate constants with the same
 # value in the old bot (EA_SUSPENSION_GUILD_ID / ALLOWED_GUILD_ID) — merged
 # since they always pointed at the same server.
-HOME_GUILD_ID = 1270991212811391060
+HOME_GUILD_ID = 1091729426330419283
 
 ADMIN_IDS = {
     595524051208765442,
