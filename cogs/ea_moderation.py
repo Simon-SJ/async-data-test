@@ -6,7 +6,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from config import BLACKLIST_DATASTORE_ID, EA_SUSPENDED_ROLE_ID, HOME_GUILD_ID, SUSPENSION_DATASTORE_ID
+from config import BLACKLIST_DATASTORE_ID, EA_SERVER_ID, EA_SUSPENDED_ROLE_ID, SUSPENSION_DATASTORE_ID
 from services import roblox_api
 from utils.install_contexts import EVERYWHERE_CONTEXTS, EVERYWHERE_INSTALLS
 from utils.logging import log_action
@@ -25,7 +25,7 @@ class EaModeration(commands.Cog):
         self.bot = bot
 
     async def _set_suspended_role(self, discord_account: discord.User, *, add: bool, reason: str) -> str | None:
-        """Add/remove the EA-suspended role for `discord_account` in the home guild.
+        """Add/remove the EA-suspended role for `discord_account` in the EA server.
         Returns an error string to show the moderator, or None on success.
 
         NOTE: the original suspend/unsuspend commands handled a missing home
@@ -33,13 +33,13 @@ class EaModeration(commands.Cog):
         continued and still reported success. Standardized on the stricter
         suspend behavior for both here; flagged in chat.
         """
-        home_guild = self.bot.get_guild(HOME_GUILD_ID)
+        home_guild = self.bot.get_guild(EA_SERVER_ID)
         if home_guild is None:
-            return "couldn't find the home guild."
+            return "couldn't find the EA server."
 
         member = home_guild.get_member(discord_account.id)
         if member is None:
-            return f"`{discord_account}` is not in the home server."
+            return f"`{discord_account}` is not in the EA server."
 
         role = home_guild.get_role(EA_SUSPENDED_ROLE_ID)
         if role is None:
@@ -67,7 +67,7 @@ class EaModeration(commands.Cog):
         target: str,
         duration_days: Optional[int] = None,
     ):
-        await interaction.response.defer(ephemeral=False)
+        await interaction.response.defer(ephemeral=True)
 
         user_id, error = await roblox_api.resolve_user_id(target)
         if error:
@@ -99,7 +99,7 @@ class EaModeration(commands.Cog):
     @app_commands.describe(target="Roblox Username or ID to unsuspend")
     @require_ea_mod()
     async def unsuspend(self, interaction: discord.Interaction, discord_account: discord.User, target: str):
-        await interaction.response.defer(ephemeral=False)
+        await interaction.response.defer(ephemeral=True)
 
         user_id, error = await roblox_api.resolve_user_id(target)
         if error:
@@ -131,19 +131,15 @@ class EaModeration(commands.Cog):
     )
     @require_ea_mod()
     async def blacklist(self, interaction: discord.Interaction, target: str, entities: str, duration_days: Optional[int] = None):
-        await interaction.response.defer(ephemeral=False)
+        await interaction.response.defer(ephemeral=True)
 
         user_id, error = await roblox_api.resolve_user_id(target)
         if error:
             await interaction.followup.send(error)
             return
 
-        status, current_data = await roblox_api.get_datastore_entry(BLACKLIST_DATASTORE_ID, str(user_id))
-
-        if status == 200 and isinstance(current_data, dict):
-            current_data = current_data
-        else:
-            current_data = {}
+        _, current_data = await roblox_api.get_datastore_entry(BLACKLIST_DATASTORE_ID, str(user_id))
+        current_data = current_data or {}
 
         entity_list = [e.strip() for e in entities.split(",")]
         expiry = int(time.time()) + (duration_days * 86400) if duration_days else None
@@ -174,7 +170,7 @@ class EaModeration(commands.Cog):
     )
     @require_ea_mod()
     async def unblacklist(self, interaction: discord.Interaction, target: str, entities: str):
-        await interaction.response.defer(ephemeral=False)
+        await interaction.response.defer(ephemeral=True)
 
         user_id, error = await roblox_api.resolve_user_id(target)
         if error:
@@ -221,7 +217,7 @@ class EaModeration(commands.Cog):
     @ea_group.command(name="list", description="debug cmd, does not do shit")
     @require_admin()
     async def list_suspended(self, interaction: discord.Interaction):
-        await interaction.response.defer(ephemeral=False)
+        await interaction.response.defer(ephemeral=True)
         entries = await roblox_api.list_datastore_entries(SUSPENSION_DATASTORE_ID)
         print(entries)
         await interaction.followup.send("Entries printed to console.")
