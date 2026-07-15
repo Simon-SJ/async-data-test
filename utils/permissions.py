@@ -11,46 +11,49 @@ The old bot repeated this at the top of ~15 commands:
 pattern would crash outright if a command was ever invoked somewhere
 without guild context (a DM, a group DM). Every command here uses
 @require_admin() / @require_ea_mod() instead, and the actual role check
-always resolves membership in the home guild — regardless of where the
-command was invoked from — so it works the same whether someone runs it
-in the server, in a DM, or (once installed) a group DM. main.py's global
-error handler turns a failed check into the same "No permission." reply.
+scans every guild listed in config.ADMIN_ROLES_BY_GUILD /
+EA_ROLES_BY_GUILD — regardless of where the command was invoked from —
+so it works the same whether someone runs it in a server, a DM, or a
+group DM, and now also across more than one staff server. main.py's
+global error handler turns a failed check into the same "No permission."
+reply.
 """
 import discord
 from discord import app_commands
 
-from config import ADMIN_IDS, EA_SUSPENSION_ROLE_IDS, HOME_GUILD_ID, MODERATOR_ROLE_IDS
+from config import ADMIN_IDS, ADMIN_ROLES_BY_GUILD, EA_ROLES_BY_GUILD
 
 
-async def _resolve_home_member(client: discord.Client, user: discord.abc.User) -> discord.Member | None:
-    """Look up `user` as a Member of the home guild, regardless of where
-    the interaction actually happened."""
-    home_guild = client.get_guild(HOME_GUILD_ID)
-    if home_guild is None:
-        return None
+async def _has_role_in_any_guild(client: discord.Client, user: discord.abc.User, roles_by_guild: dict) -> bool:
+    """Check every (guild_id -> role_ids) entry until one grants access."""
+    for guild_id, role_ids in roles_by_guild.items():
+        guild = client.get_guild(guild_id)
+        if guild is None:
+            continue
 
-    member = home_guild.get_member(user.id)
-    if member is not None:
-        return member
+        member = guild.get_member(user.id)
+        if member is None:
+            try:
+                member = await guild.fetch_member(user.id)
+            except (discord.NotFound, discord.HTTPException):
+                continue
 
-    try:
-        return await home_guild.fetch_member(user.id)
-    except (discord.NotFound, discord.HTTPException):
-        return None
+        if any(role.id in role_ids for role in member.roles):
+            return True
+
+    return False
 
 
 async def is_admin(client: discord.Client, user: discord.abc.User) -> bool:
     if user.id in ADMIN_IDS:
         return True
-    member = await _resolve_home_member(client, user)
-    return member is not None and any(role.id in MODERATOR_ROLE_IDS for role in member.roles)
+    return await _has_role_in_any_guild(client, user, ADMIN_ROLES_BY_GUILD)
 
 
 async def is_ea_suspension_mod(client: discord.Client, user: discord.abc.User) -> bool:
     if user.id in ADMIN_IDS:
         return True
-    member = await _resolve_home_member(client, user)
-    return member is not None and any(role.id in EA_SUSPENSION_ROLE_IDS for role in member.roles)
+    return await _has_role_in_any_guild(client, user, EA_ROLES_BY_GUILD)
 
 
 def require_admin():

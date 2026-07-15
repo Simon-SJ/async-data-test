@@ -28,40 +28,62 @@ SUSPENSION_DATASTORE_ID = "SuspendedEA"
 BLACKLIST_DATASTORE_ID = "EntityBlacklists"
 
 # --- Discord: home guild ---
-# The one server where staff roles are defined. Permission checks resolve
-# membership here regardless of where a command is actually invoked, which
-# is what lets moderation commands work from DMs/group DMs (see
-# utils/permissions.py). This was two separate constants with the same
-# value in the old bot (EA_SUSPENSION_GUILD_ID / ALLOWED_GUILD_ID) — merged
-# since they always pointed at the same server.
-HOME_GUILD_ID = 1470530239359750287
+# The one server where the EA-suspended role lives, and where /ea
+# suspend|unsuspend assigns/removes it. This is a single-guild feature by
+# nature (a role only exists in one server), unlike the permission role
+# maps below. Was two separate constants with the same value in the old
+# bot (EA_SUSPENSION_GUILD_ID / ALLOWED_GUILD_ID) — merged since they
+# always pointed at the same server.
+ASYNC_SERVER_ID = 1091729426330419283
+SCRIPTO_SERVER_ID = 1470530239359750287
+EA_SERVER_ID = 1270991212811391060
 
 ADMIN_IDS = {
     595524051208765442, # simonsj
     554691397601591306, # guy
     781870312194703380, # scripto
-    465161449359147010,
-    659284243951910933,
+    465161449359147010, # pesty
+    659284243951910933, # morta
     910102167199838229, # hatemails
     369855611191558145, # mightymails
     818509530539098112, # Mythical
 }
-MODERATOR_ROLE_IDS = {
-    1271205269183139891,
-    1091729426850521105,
-    1271208960463999079,
-    1145150303210049576,
-    1411096066602045533,
-    1271202265688051722,
-    1518726629436690534,
+
+# Role IDs are unique per guild, so "check multiple servers for roles"
+# means a mapping of guild_id -> that guild's role IDs, not one flat set.
+# utils/permissions.py checks every guild listed here and grants access if
+# the user holds a matching role in ANY of them. To add another server:
+# turn on Developer Mode in Discord (User Settings > Advanced), right-click
+# the role(s) you want to count as admin/EA-mod in that server, "Copy
+# Role ID", and add an entry below keyed by that server's guild ID.
+ADMIN_ROLES_BY_GUILD = {
+    ASYNC_SERVER_ID: {
+        1279483933943136368, # Discord Mod
+        1279558024758820974, # Discord Administrator
+    },
+    SCRIPTO_SERVER_ID: {
+        1518726629436690534, # baldi's hammer 
+    },
+    # SECOND_GUILD_ID: {role_id_1, role_id_2},
 }
-EA_SUSPENSION_ROLE_IDS = {1270993277834760243, 1270998010502844449}
+EA_ROLES_BY_GUILD = {
+    SCRIPTO_SERVER_ID: {
+        1518726629436690534, # baldi's hammer 
+    },
+    EA_SERVER_ID: {
+        1270998010502844449, # actor orginiser 
+        1270993277834760243, # Director
+        #1522421015815131176, # actor supervisor
+    },
+    # SECOND_GUILD_ID: {role_id_1},
+}
+
 EA_SUSPENDED_ROLE_ID = 1417249050616664094
 
 BOOSTER_ROLE_ID = 1091729426829557850  # treated as a booster alongside real Nitro boosts
 
 # --- Discord: channels ---
-LOG_CHANNEL_ID = 1525409312120504413
+LOG_CHANNEL_ID = 1496863034818433096
 DM_FORWARD_CHANNEL_ID = 1470330654448156672
 
 # --- Gist file names ---
