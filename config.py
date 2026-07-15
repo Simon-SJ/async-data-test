@@ -73,7 +73,7 @@ EA_ROLES_BY_GUILD = {
     EA_SERVER_ID: {
         1270998010502844449, # actor orginiser 
         1270993277834760243, # Director
-        #1522421015815131176, # actor supervisor
+        1522421015815131176, # actor supervisor
     },
     # SECOND_GUILD_ID: {role_id_1},
 }
