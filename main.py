@@ -9,6 +9,7 @@ from discord import app_commands
 from discord.ext import commands
 
 import config
+from services import gist_store
 
 COGS = (
     "cogs.booster_sync",
@@ -39,6 +40,10 @@ class ModBot(commands.Bot):
 
     async def on_ready(self):
         print(f"Logged in as {self.user} (ID: {self.user.id}).")
+
+    async def close(self):
+        await gist_store.close_session()
+        await super().close()
 
 
 bot = ModBot()

@@ -15,30 +15,42 @@ async def sync_and_publish(
     manual_override: list | None = None,
     names_override: dict | None = None,
 ) -> int:
-    
-        manual_list = manual_override if manual_override is not None else await gist_store.get_file(GIST_MANUAL_FILE, default=[])
-        name_overrides = names_override if names_override is not None else await gist_store.get_file(GIST_NAMES_FILE, default={})
+    """Recompute the combined booster list and push it (plus the manual
+    list and name overrides) to the gist. Returns the number of users in
+    the final list.
 
-        live_boosters = []
-        for guild in client.guilds:
-            for member in guild.members:
-                member_role_ids = {role.id for role in member.roles}
-                if member.premium_since or BOOSTER_ROLE_ID in member_role_ids:
-                    live_boosters.append((str(member.id), member.display_name))
+    NOTE: this pushes moderators.json as an empty list every time, same as
+    the original — nothing anywhere in the bot ever populates a moderators
+    list, so every sync currently overwrites that file with []. Left as-is
+    rather than guessing what should go there; flagged in chat.
+    """
+    if manual_override is not None and names_override is not None:
+        manual_list, name_overrides = manual_override, names_override
+    else:
+        fetched = await gist_store.get_files([GIST_MANUAL_FILE, GIST_NAMES_FILE], defaults={GIST_MANUAL_FILE: [], GIST_NAMES_FILE: {}})
+        manual_list = manual_override if manual_override is not None else fetched[GIST_MANUAL_FILE]
+        name_overrides = names_override if names_override is not None else fetched[GIST_NAMES_FILE]
 
-        combined = {user_id: name for user_id, name in manual_list}
-        for user_id, name in live_boosters:
-            combined[user_id] = name
+    live_boosters = []
+    for guild in client.guilds:
+        for member in guild.members:
+            member_role_ids = {role.id for role in member.roles}
+            if member.premium_since or BOOSTER_ROLE_ID in member_role_ids:
+                live_boosters.append((str(member.id), member.display_name))
 
-        final_output = [[user_id, name_overrides.get(user_id, name)] for user_id, name in combined.items()]
+    combined = {user_id: name for user_id, name in manual_list}
+    for user_id, name in live_boosters:
+        combined[user_id] = name
 
-        success = await gist_store.put_files(
-            {
-                GIST_DATA_FILE: final_output,
-                GIST_MANUAL_FILE: manual_list,
-                GIST_NAMES_FILE: name_overrides,
-                GIST_MODERATORS_FILE: [], 
-            }
-        )
+    final_output = [[user_id, name_overrides.get(user_id, name)] for user_id, name in combined.items()]
 
-        return len(final_output)
+    await gist_store.put_files(
+        {
+            GIST_DATA_FILE: final_output,
+            GIST_MANUAL_FILE: manual_list,
+            GIST_NAMES_FILE: name_overrides,
+            GIST_MODERATORS_FILE: [],  # see note above
+        }
+    )
+
+    return len(final_output)
