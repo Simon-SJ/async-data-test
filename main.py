@@ -38,6 +38,17 @@ class ModBot(commands.Bot):
         synced = await self.tree.sync()
         print(f"Synced {len(synced)} top-level slash commands.")
 
+    async def on_message(self, message: discord.Message):
+        # commands.Bot's default on_message calls process_commands(),
+        # which treats the word after a mention as a prefix-command name
+        # to look up. This bot has none (everything is a slash command),
+        # so every plain "@bot hello" was being parsed as an attempted —
+        # and always-failing — command, spamming CommandNotFound into the
+        # logs. Overriding with nothing here stops that routing entirely.
+        # Cog on_message listeners (e.g. dm_tools' DM forwarding) are
+        # unaffected — those are dispatched independently of this method.
+        pass
+
     async def on_ready(self):
         print(f"Logged in as {self.user} (ID: {self.user.id}).")
 
