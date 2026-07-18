@@ -33,3 +33,5 @@ async def log_action(
         print(f"[log_action] Missing access to log channel {LOG_CHANNEL_ID} — check the bot's permissions there.")
     except discord.HTTPException as e:
         print(f"[log_action] Failed to send log message: {e}")
+    else:
+        print(f"[log_action] Posted '{title}' to log channel {LOG_CHANNEL_ID}.")
