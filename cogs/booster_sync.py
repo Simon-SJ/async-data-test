@@ -65,7 +65,7 @@ class BoosterSync(commands.Cog):
         # output either way).
 
         if after.guild.id != _GUILD_ID:
-        return
+            return
         
         was_boosting = _is_boosting(before)
         is_boosting = _is_boosting(after)
