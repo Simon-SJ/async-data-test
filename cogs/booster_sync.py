@@ -23,6 +23,7 @@ from utils.permissions import require_admin
 # syncing. Coalesces a burst of updates (e.g. several people boosting
 # around the same time) into one Gist write instead of one per event.
 _DEBOUNCE_SECONDS = 8.0
+_GUILD_ID = 1091729426330419283
 
 
 def _is_boosting(member: discord.Member) -> bool:
@@ -62,6 +63,10 @@ class BoosterSync(commands.Cog):
         # boost status flipping, or a *current* booster's display name
         # changing (a name change on a non-booster can't change the
         # output either way).
+
+        if after.guild.id != _GUILD_ID:
+        return
+        
         was_boosting = _is_boosting(before)
         is_boosting = _is_boosting(after)
 
