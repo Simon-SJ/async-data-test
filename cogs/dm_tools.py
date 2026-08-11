@@ -4,6 +4,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from config import DM_FORWARD_CHANNEL_ID
+from utils.logging import log_action
 from utils.install_contexts import EVERYWHERE_CONTEXTS, EVERYWHERE_INSTALLS
 from utils.permissions import require_admin
 
@@ -69,6 +70,16 @@ class DmTools(commands.Cog):
 
         try:
             await user.send(message)
+            await log_action(
+                self.bot,
+                title="Discord DM sent",
+                description=(
+                    f"**Target:** {target}"
+                    f"**Moderator:** {interaction.user.mention}\n"
+                    f"**Message:** {message}\n"
+                ),
+                color=discord.Color.red(),
+            )
             await interaction.followup.send(f"✅ DM sent to `{user}` (`{user.id}`).")
         except discord.Forbidden:
             await interaction.followup.send(f"❌ Couldn't DM `{user}` — they may have DMs disabled.", ephemeral=True)
