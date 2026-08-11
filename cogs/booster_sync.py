@@ -13,7 +13,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from config import BOOSTER_ROLE_ID, GIST_MANUAL_FILE, GIST_NAMES_FILE
+from config import BOOSTER_ROLE_ID, GIST_MANUAL_FILE, GIST_NAMES_FILE, ASYNC_SERVER_ID
 from services import booster_sync_service
 from services import gist_store
 from utils.install_contexts import GUILD_ONLY_CONTEXTS, GUILD_ONLY_INSTALLS
@@ -23,7 +23,6 @@ from utils.permissions import require_admin
 # syncing. Coalesces a burst of updates (e.g. several people boosting
 # around the same time) into one Gist write instead of one per event.
 _DEBOUNCE_SECONDS = 8.0
-_GUILD_ID = 1091729426330419283
 
 
 def _is_boosting(member: discord.Member) -> bool:
@@ -64,7 +63,8 @@ class BoosterSync(commands.Cog):
         # changing (a name change on a non-booster can't change the
         # output either way).
 
-        if after.guild.id != _GUILD_ID:
+
+        if after.guild.id != ASYNC_SERVER_ID or before.guild.id != ASYNC_SERVER_ID:
             return
         
         was_boosting = _is_boosting(before)
