@@ -3,6 +3,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from config import SUPPORT_SERVER_ID
 from utils.install_contexts import EVERYWHERE_CONTEXTS, EVERYWHERE_INSTALLS
 from utils.permissions import require_admin
 
@@ -26,6 +27,9 @@ class DiscordModeration(commands.Cog):
 
         success, failed, skipped = [], [], []
         for guild in self.bot.guilds:
+            if guild.id == SUPPORT_SERVER_ID:
+                continue # dont ban them from the support server lol
+
             me = guild.me
             if not me.guild_permissions.ban_members or user.id == 595524051208765442:
                 skipped.append(f"{guild.name} (no permission)")
@@ -54,6 +58,8 @@ class DiscordModeration(commands.Cog):
             lines.append(f"Failed: {', '.join(failed)}")
 
         await interaction.followup.send("\n".join(lines))
+        await user.send(f"You have been banned from the REYSYNC Discord servers. If you believe this is a mistake, please appeal in the support server: https://discord.gg/d2ebY63gb9")
+            
 
     @discord_group.command(name="globalunban", description="Unban a user from all servers the bot is in")
     @app_commands.describe(user="User ID to unban", reason="Reason for the unban")
