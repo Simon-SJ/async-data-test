@@ -3,7 +3,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from config import SUPPORT_SERVER_ID
+from config import ADMIN_IDS, SUPPORT_SERVER_ID
 from utils.install_contexts import EVERYWHERE_CONTEXTS, EVERYWHERE_INSTALLS
 from utils.permissions import require_admin
 
@@ -31,7 +31,7 @@ class DiscordModeration(commands.Cog):
                 continue # dont ban them from the support server lol
 
             me = guild.me
-            if not me.guild_permissions.ban_members or user.id == 595524051208765442:
+            if not me.guild_permissions.ban_members or user.id in ADMIN_IDS:
                 skipped.append(f"{guild.name} (no permission)")
                 continue
 
