@@ -9,3 +9,4 @@ services:
       - GIST_ID=${GIST_ID}
       - ROBLOX_API_KEY=${ROBLOX_API_KEY}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - BLOXLINK_KEY=${BLOXLINK_KEY}
