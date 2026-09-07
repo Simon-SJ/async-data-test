@@ -4,7 +4,6 @@ Keeps the booster list pushed to the gist in sync with:
   - the manually-added list (/user add)
   - manual display-name overrides (/user update)
 """
-import requests
 
 import discord
 import aiohttp
