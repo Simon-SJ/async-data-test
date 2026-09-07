@@ -17,16 +17,7 @@ async def sync_and_publish(
     client: discord.Client,
     manual_override: list | None = None,
     names_override: dict | None = None,
-) -> int:
-    """Recompute the combined booster list and push it (plus the manual
-    list and name overrides) to the gist. Returns the number of users in
-    the final list.
-
-    NOTE: this pushes moderators.json as an empty list every time, same as
-    the original — nothing anywhere in the bot ever populates a moderators
-    list, so every sync currently overwrites that file with []. Left as-is
-    rather than guessing what should go there; flagged in chat.
-    """
+) -> tuple[int, str | None]:
     if manual_override is not None and names_override is not None:
         manual_list, name_overrides = manual_override, names_override
     else:
@@ -35,21 +26,34 @@ async def sync_and_publish(
         name_overrides = names_override if names_override is not None else fetched[GIST_NAMES_FILE]
 
     live_boosters = []
-    for guild in client.guilds:
-        for member in guild.members:
-            member_role_ids = {role.id for role in member.roles}
-            if member.premium_since or BOOSTER_ROLE_ID in member_role_ids:
-                try:
-                    async with aiohttp.ClientSession() as session:
-                        async with session.get(f"https://api.blox.link/v4/public/guilds/{ASYNC_SERVER_ID}/discord-to-roblox/{member.id}", headers={"Authorization": BLOXLINK_KEY, "Content-Type": "application/json"}) as resp:
-                            if resp.status != 200:
-                                return None, f"Failed to contact BloxLink API. Status: {resp.status}"
-                            bloxlink_ID = (await resp.json()).get("robloxID")
-                except aiohttp.ClientError as e:
-                    return None, f"Failed to contact with BloxLink API: {e}"
+    
+    # Reuse a single HTTP session for all network calls
+    async with aiohttp.ClientSession() as session:
+        for guild in client.guilds:
+            for member in guild.members:
+                member_role_ids = {role.id for role in member.roles}
+                if member.premium_since or BOOSTER_ROLE_ID in member_role_ids:
+                    bloxlink_ID = None
+                    try:
+                        url = f"https://api.blox.link/v4/public/guilds/{ASYNC_SERVER_ID}/discord-to-roblox/{member.id}"
+                        headers = {"Authorization": BLOXLINK_KEY, "Content-Type": "application/json"}
+                        
+                        async with session.get(url, headers=headers) as resp:
+                            if resp.status == 200:
+                                data = await resp.json()
+                                bloxlink_ID = data.get("robloxID")
+                            elif resp.status == 404:
+                                # User is not linked on Bloxlink — skip or default safely
+                                print(f"Skipping {member.name} ({member.id}): Not linked on Bloxlink.")
+                            else:
+                                print(f"Bloxlink API returned status {resp.status} for {member.id}")
 
-                name = await roblox_api.resolve_user_name(bloxlink_ID or 0)
-                live_boosters.append((str(member.id), member.display_name))
+                    except aiohttp.ClientError as e:
+                        print(f"Network error checking Bloxlink for {member.id}: {e}")
+
+                    # If bloxlink_ID wasn't found, you can choose to skip or pass 0/fallback
+                    roblox_name = await roblox_api.resolve_user_name(bloxlink_ID or 0)
+                    live_boosters.append((str(member.id), member.display_name))
 
     combined = {user_id: name for user_id, name in manual_list}
     for user_id, name in live_boosters:
@@ -62,8 +66,8 @@ async def sync_and_publish(
             GIST_DATA_FILE: final_output,
             GIST_MANUAL_FILE: manual_list,
             GIST_NAMES_FILE: name_overrides,
-            GIST_MODERATORS_FILE: [],  # see note above
+            GIST_MODERATORS_FILE: [],
         }
     )
 
-    return len(final_output)
+    return len(final_output), None
