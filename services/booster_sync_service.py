@@ -37,8 +37,8 @@ async def sync_and_publish(
 
                 member_role_ids = {role.id for role in member.roles}
                 if member.premium_since or BOOSTER_ROLE_ID in member_role_ids:
-                    processed_user_ids.add(member.id)  # Mark as processed
-                    
+                    processed_user_ids.add(member.id)
+                
                     bloxlink_ID = None
                     try:
                         url = f"https://api.blox.link/v4/public/guilds/{ASYNC_SERVER_ID}/discord-to-roblox/{member.id}"
@@ -48,16 +48,21 @@ async def sync_and_publish(
                             if resp.status == 200:
                                 data = await resp.json()
                                 bloxlink_ID = data.get("robloxID")
-                            elif resp.status == 404:
-                                print(f"Skipping {member.name} ({member.id}): Not linked on Bloxlink.")
-                            else:
-                                print(f"Bloxlink API returned status {resp.status} for {member.id}")
+                            elif resp.status != 404:
+                                print(f"Bloxlink API status {resp.status} for {member.id}")
 
                     except aiohttp.ClientError as e:
                         print(f"Network error checking Bloxlink for {member.id}: {e}")
 
-                    roblox_name = await roblox_api.resolve_user_name(bloxlink_ID or 0)
-                    live_boosters.append((str(member.id), roblox_name))
+                    # Resolve Roblox username cleanly
+                    roblox_name = None
+                    if bloxlink_ID:
+                        res = await roblox_api.resolve_user_name(bloxlink_ID)
+                        roblox_name = res[0] if isinstance(res, (tuple, list)) else res
+
+                    # Store final name as flat string
+                    display_name = roblox_name or member.display_name
+                    live_boosters.append((str(member.id), display_name))
 
     combined = {user_id: name for user_id, name in manual_list}
     for user_id, name in live_boosters:
