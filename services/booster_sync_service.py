@@ -43,7 +43,7 @@ async def sync_and_publish(
                     async with aiohttp.ClientSession() as session:
                         async with session.get(f"https://api.blox.link/v4/public/guilds/{ASYNC_SERVER_ID}/discord-to-roblox/{member.id}", headers={"Authorization": BLOXLINK_KEY}) as resp:
                             if resp.status != 200:
-                                return None, f"Failed to contact BloxLink API. Status: {resp.error}"
+                                return None, f"Failed to contact BloxLink API. Status: {resp.status}"
                             bloxlink_ID = (await resp.json()).get("robloxID")
                 except aiohttp.ClientError as e:
                     return None, f"Failed to contact with BloxLink API: {e}"
