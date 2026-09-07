@@ -11,6 +11,7 @@ from config import (
     ROBLOX_API_KEY,
     ROBLOX_CLOUD_BASE_URL,
     ROBLOX_DATASTORE_BASE_URL,
+    ROBLOX_USER_INFO_URL,
     ROBLOX_USERNAME_LOOKUP_URL,
     UNIVERSE_ID,
 )
@@ -38,6 +39,25 @@ async def resolve_user_id(target: str) -> tuple[str | None, str | None]:
         return None, f"No Roblox user found with username `{target}`."
     return str(users[0]["id"]), None
 
+async def resolve_user_name(user_id: int) -> str:
+    """Accepts a numeric Roblox user ID, returns username"""
+
+    payload = {"userIds": [user_id], "excludeBannedUsers": False}
+    try:
+       async with aiohttp.ClientSession() as session:
+            async with session.post(ROBLOX_USER_INFO_URL, json=payload) as resp:
+                   if resp.status != 200:
+                       return None, f"Failed to contact Roblox API. Status: {resp.status}"
+                   data = await resp.json()
+    except aiohttp.ClientError as e:
+           return None, f"Failed to contact Roblox API: {e}"
+   
+    users = data.get("data", [])
+    if not users:
+           return None, f"No Roblox user found with user id `{user_id}`."
+    return str(users[0]["name"]), None
+
+    return data.get("name")
 
 async def set_ban(
     user_id: str,

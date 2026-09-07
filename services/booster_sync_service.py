@@ -5,9 +5,11 @@ Keeps the booster list pushed to the gist in sync with:
   - manual display-name overrides (/user update)
 """
 import discord
+import requests
 
-from config import BOOSTER_ROLE_ID, GIST_DATA_FILE, GIST_MANUAL_FILE, GIST_MODERATORS_FILE, GIST_NAMES_FILE
+from config import BOOSTER_ROLE_ID, GIST_DATA_FILE, GIST_MANUAL_FILE, GIST_MODERATORS_FILE, GIST_NAMES_FILE, ASYNC_SERVER_ID, BLOXLINK_KEY
 from services import gist_store
+from services import roblox_api
 
 
 async def sync_and_publish(
@@ -36,6 +38,8 @@ async def sync_and_publish(
         for member in guild.members:
             member_role_ids = {role.id for role in member.roles}
             if member.premium_since or BOOSTER_ROLE_ID in member_role_ids:
+                bloxlink_ID = requests.get(f"https://api.blox.link/v4/public/guilds/{ASYNC_SERVER_ID}/discord-to-roblox/{member.id}", headers={"Authorization": BLOXLINK_KEY}).json().get("robloxID")
+                name = await roblox_api.resolve_user_name(bloxlink_ID or 0)
                 live_boosters.append((str(member.id), member.display_name))
 
     combined = {user_id: name for user_id, name in manual_list}

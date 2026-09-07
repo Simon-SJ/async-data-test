@@ -16,6 +16,7 @@ DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 ROBLOX_API_KEY = os.getenv("ROBLOX_API_KEY")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 GIST_ID = os.getenv("GIST_ID")
+BLOXLINK_KEY = os.getenv("BLOXLINK_KEY")
 
 # --- Roblox ---
 UNIVERSE_ID = 3467628732
@@ -23,6 +24,7 @@ UNIVERSE_ID = 3467628732
 ROBLOX_CLOUD_BASE_URL = "https://apis.roblox.com/cloud/v2"
 ROBLOX_DATASTORE_BASE_URL = "https://apis.roblox.com/datastores/v1"
 ROBLOX_USERNAME_LOOKUP_URL = "https://users.roblox.com/v1/usernames/users"
+ROBLOX_USER_INFO_URL = "https://users.roblox.com/v1/users"
 
 SUSPENSION_DATASTORE_ID = "SuspendedEA"
 BLACKLIST_DATASTORE_ID = "EntityBlacklists"
@@ -108,6 +110,7 @@ def validate() -> None:
             ("ROBLOX_API_KEY", ROBLOX_API_KEY),
             ("GITHUB_TOKEN", GITHUB_TOKEN),
             ("GIST_ID", GIST_ID),
+            ("BLOXLINK_KEY", BLOXLINK_KEY),
         )
         if not value
     ]
