@@ -26,13 +26,19 @@ async def sync_and_publish(
         name_overrides = names_override if names_override is not None else fetched[GIST_NAMES_FILE]
 
     live_boosters = []
-    
-    # Reuse a single HTTP session for all network calls
+    processed_user_ids = set()  # Tracks users we already checked
+
     async with aiohttp.ClientSession() as session:
         for guild in client.guilds:
             for member in guild.members:
+                # Skip if we already processed this user in another guild
+                if member.id in processed_user_ids:
+                    continue
+
                 member_role_ids = {role.id for role in member.roles}
                 if member.premium_since or BOOSTER_ROLE_ID in member_role_ids:
+                    processed_user_ids.add(member.id)  # Mark as processed
+                    
                     bloxlink_ID = None
                     try:
                         url = f"https://api.blox.link/v4/public/guilds/{ASYNC_SERVER_ID}/discord-to-roblox/{member.id}"
@@ -43,7 +49,6 @@ async def sync_and_publish(
                                 data = await resp.json()
                                 bloxlink_ID = data.get("robloxID")
                             elif resp.status == 404:
-                                # User is not linked on Bloxlink — skip or default safely
                                 print(f"Skipping {member.name} ({member.id}): Not linked on Bloxlink.")
                             else:
                                 print(f"Bloxlink API returned status {resp.status} for {member.id}")
@@ -51,7 +56,6 @@ async def sync_and_publish(
                     except aiohttp.ClientError as e:
                         print(f"Network error checking Bloxlink for {member.id}: {e}")
 
-                    # If bloxlink_ID wasn't found, you can choose to skip or pass 0/fallback
                     roblox_name = await roblox_api.resolve_user_name(bloxlink_ID or 0)
                     live_boosters.append((str(member.id), member.display_name))
 
