@@ -46,8 +46,7 @@ async def sync_and_publish(
                             if resp.status != 200:
                                 return None, f"Failed to contact BloxLink API. Status: {resp.error}"
                             bloxlink_ID = (await resp.json()).get("robloxID")
-                except: 
-                    aiohttp.ClientError as e:
+                except aiohttp.ClientError as e:
                     return None, f"Failed to contact with BloxLink API: {e}"
 
                 name = await roblox_api.resolve_user_name(bloxlink_ID or 0)
