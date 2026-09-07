@@ -57,7 +57,7 @@ async def sync_and_publish(
                         print(f"Network error checking Bloxlink for {member.id}: {e}")
 
                     roblox_name = await roblox_api.resolve_user_name(bloxlink_ID or 0)
-                    live_boosters.append((str(member.id), member.display_name))
+                    live_boosters.append((str(member.id), roblox_name))
 
     combined = {user_id: name for user_id, name in manual_list}
     for user_id, name in live_boosters:
