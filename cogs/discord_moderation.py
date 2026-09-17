@@ -28,6 +28,7 @@ class DiscordModeration(commands.Cog):
         success, failed, skipped = [], [], []
         for guild in self.bot.guilds:
             if guild.id == SUPPORT_SERVER_ID:
+                skipped.append(f"{guild.name} (support server)")
                 continue # dont ban them from the support server lol
 
             me = guild.me
