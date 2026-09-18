@@ -6,6 +6,7 @@ from discord.ext import commands
 from config import ADMIN_IDS, SUPPORT_SERVER_ID
 from utils.install_contexts import EVERYWHERE_CONTEXTS, EVERYWHERE_INSTALLS
 from utils.permissions import require_admin
+from utils.logging import log_action
 
 
 class DiscordModeration(commands.Cog):
@@ -58,6 +59,18 @@ class DiscordModeration(commands.Cog):
         if failed:
             lines.append(f"Failed: {', '.join(failed)}")
 
+        await log_action(
+            self.bot,
+            title="🔨 Roblox User(s) Banned",
+            description=(
+                f"**Targets:** {', '.join(user + " (" + user.id + "")}\n"
+                f"**Moderator:** {interaction.user.mention}\n"
+                f"**Servers:** {len(success)}/{len(self.bot.guilds)}"
+                f"**Reason:** {reason}\n"
+            ),
+            color=discord.Color.red(),
+        )
+
         await interaction.followup.send("\n".join(lines))
         await user.send(f"You have been banned from the REYSYNC Discord servers. If you believe this is a mistake, please appeal in the support server: https://discord.gg/d2ebY63gb9")
             
@@ -95,6 +108,18 @@ class DiscordModeration(commands.Cog):
             lines.append(f"Skipped: {', '.join(skipped)}")
         if failed:
             lines.append(f"Failed: {', '.join(failed)}")
+
+        await log_action(
+            self.bot,
+            title="🔨 Roblox User(s) Banned",
+            description=(
+                f"**Targets:** {', '.join(user + " (" + user.id + "")}\n"
+                f"**Moderator:** {interaction.user.mention}\n"
+                f"**Servers:** {len(success)}/{len(self.bot.guilds)}"
+                f"**Reason:** {reason}\n"
+            ),
+            color=discord.Color.red(),
+        )
 
         await interaction.followup.send("\n".join(lines))
 
