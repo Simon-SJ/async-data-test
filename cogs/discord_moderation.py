@@ -63,9 +63,9 @@ class DiscordModeration(commands.Cog):
             self.bot,
             title="🔨 Roblox User(s) Banned",
             description=(
-                f"**Target:** {user} ({user.id})\n"
+                f"**Target:** <@{user.id}> ({user.id})\n"
                 f"**Moderator:** {interaction.user.mention}\n"
-                f"**Servers:** {len(success)}/{len(self.bot.guilds)}"
+                f"**Servers:** {len(success)}/{len(self.bot.guilds)}\n"
                 f"**Reason:** {reason}\n"
             ),
             color=discord.Color.red(),
@@ -113,9 +113,9 @@ class DiscordModeration(commands.Cog):
             self.bot,
             title="🔨 Roblox User(s) Banned",
             description=(
-                f"**Target:** {user} ({user.id})\n"
+                f"**Target:** <@{user.id}> ({user.id})\n"
                 f"**Moderator:** {interaction.user.mention}\n"
-                f"**Servers:** {len(success)}/{len(self.bot.guilds)}"
+                f"**Servers:** {len(success)}/{len(self.bot.guilds)}\n"
                 f"**Reason:** {reason}\n"
             ),
             color=discord.Color.red(),
