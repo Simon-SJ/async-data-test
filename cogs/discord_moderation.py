@@ -63,7 +63,7 @@ class DiscordModeration(commands.Cog):
             self.bot,
             title="🔨 Roblox User(s) Banned",
             description=(
-                f"**Target:** {user + " (" + user.id + ")"}\n"
+                f"**Target:** {user} ({user.id})\n"
                 f"**Moderator:** {interaction.user.mention}\n"
                 f"**Servers:** {len(success)}/{len(self.bot.guilds)}"
                 f"**Reason:** {reason}\n"
@@ -113,7 +113,7 @@ class DiscordModeration(commands.Cog):
             self.bot,
             title="🔨 Roblox User(s) Banned",
             description=(
-                f"**Target:** {user + " (" + user.id + ")"}\n"
+                f"**Target:** {user} ({user.id})\n"
                 f"**Moderator:** {interaction.user.mention}\n"
                 f"**Servers:** {len(success)}/{len(self.bot.guilds)}"
                 f"**Reason:** {reason}\n"
