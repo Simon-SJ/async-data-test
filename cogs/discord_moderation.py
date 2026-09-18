@@ -61,7 +61,7 @@ class DiscordModeration(commands.Cog):
 
         await log_action(
             self.bot,
-            title="🔨 Roblox User(s) Banned",
+            title="🔨 Discord User Banned",
             description=(
                 f"**Target:** <@{user.id}> ({user.id})\n"
                 f"**Moderator:** {interaction.user.mention}\n"
@@ -111,7 +111,7 @@ class DiscordModeration(commands.Cog):
 
         await log_action(
             self.bot,
-            title="🔨 Roblox User(s) Banned",
+            title="🔨 Discord User Banned",
             description=(
                 f"**Target:** <@{user.id}> ({user.id})\n"
                 f"**Moderator:** {interaction.user.mention}\n"
